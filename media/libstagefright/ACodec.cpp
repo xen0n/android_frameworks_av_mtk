@@ -929,6 +929,7 @@ status_t ACodec::setupNativeWindowSizeFormatAndUsage(
     int32_t width = 0, height = 0;
     int32_t isAdaptivePlayback = 0;
 
+#ifndef MTK_HARDWARE
     if (mInputFormat->findInt32("adaptive-playback", &isAdaptivePlayback)
             && isAdaptivePlayback
             && mInputFormat->findInt32("max-width", &width)
@@ -940,6 +941,11 @@ status_t ACodec::setupNativeWindowSizeFormatAndUsage(
         width = def.format.video.nFrameWidth;
         height = def.format.video.nFrameHeight;
     }
+#else
+    width = def.format.video.nStride;
+    height = def.format.video.nSliceHeight;
+#endif
+
     err = setNativeWindowSizeFormatAndUsage(
             nativeWindow,
             width,
