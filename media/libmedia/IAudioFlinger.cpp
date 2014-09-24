@@ -78,6 +78,30 @@ enum {
 #ifdef QCOM_DIRECTTRACK
     CREATE_DIRECT_TRACK,
 #endif
+#ifdef MTK_AUDIO
+    GET_EM_PARAMETER,
+    SET_EM_PARAMETER,
+    SET_AUDIO_COMMAND,
+    GET_AUDIO_COMMAND,
+    SET_AUDIO_DATA,
+    GET_AUDIO_DATA,
+    SET_ACF_PREVIEW_PARAMETER,
+    SET_HCF_PREVIEW_PARAMETER,
+    PCM_PLAY_START,
+    PCM_PLAY_STOP,
+    PCM_PLAY_WEITE,
+    PCM_PLAY_GET_FREE_BUFFER_SIZE,
+    PCM_RECORD_START,
+    PCM_RECORD_STOP,
+    PCM_RECORD_READ,
+    Read_Ref_FromRing,
+    Get_Voice_Unlock_ULTime,
+    Set_Voice_Unlock_SRC,
+    start_Voice_Unlock_DL,
+    stop_Voice_Unlock_DL,
+    free_Voice_Unlock_DL_Instance,
+    get_Voice_Unlock_DL_Instance,
+    Get_Voice_Unlock_DL_Latency,
 };
 
 class BpAudioFlinger : public BpInterface<IAudioFlinger>
@@ -785,6 +809,255 @@ public:
         return reply.readInt32();
     }
 
+
+#ifdef MTK_AUDIO
+    // Interfaces mtk added
+    virtual int xWayPlay_Start(int sample_rate)
+    {
+        ALOGV("xWayPlay_Start");
+        Parcel data, reply;
+        data.writeInterfaceToken(IAudioFlinger::getInterfaceDescriptor());
+        data.writeInt32(sample_rate);
+        remote()->transact(PCM_PLAY_START, data, &reply);
+        int ret = reply.readInt32();
+        return ret;
+    }
+    virtual int xWayPlay_Stop()
+    {
+        ALOGV("xWayPlay_Start");
+        Parcel data, reply;
+        data.writeInterfaceToken(IAudioFlinger::getInterfaceDescriptor());
+        remote()->transact(PCM_PLAY_STOP, data, &reply);
+        int ret = reply.readInt32();
+        return ret;
+    }
+    virtual int xWayPlay_Write(void *buffer, int size_bytes)
+    {
+        ALOGV("xWayPlay_Write");
+        Parcel data, reply;
+        data.writeInterfaceToken(IAudioFlinger::getInterfaceDescriptor());
+        data.writeInt32(size_bytes);
+        data.write(buffer,size_bytes);
+        remote()->transact(PCM_PLAY_WEITE, data, &reply);
+        int ret = reply.readInt32();
+        return ret;
+    }
+    virtual int xWayPlay_GetFreeBufferCount(void)
+    {
+        ALOGV("xWayPlay_GetFreeBufferCount");
+        Parcel data, reply;
+        data.writeInterfaceToken(IAudioFlinger::getInterfaceDescriptor());
+        remote()->transact(PCM_PLAY_GET_FREE_BUFFER_SIZE, data, &reply);
+        int ret = reply.readInt32();
+        return ret;
+    }
+    virtual int xWayRec_Start(int sample_rate)
+    {
+        ALOGV("xWayRec_Start");
+        Parcel data, reply;
+        data.writeInterfaceToken(IAudioFlinger::getInterfaceDescriptor());
+        data.writeInt32(sample_rate);
+        remote()->transact(PCM_RECORD_START, data, &reply);
+        int ret = reply.readInt32();
+        return ret;
+    }
+    virtual int xWayRec_Stop()
+    {
+        ALOGV("xWayRec_Stop");
+        Parcel data, reply;
+        data.writeInterfaceToken(IAudioFlinger::getInterfaceDescriptor());
+        remote()->transact(PCM_RECORD_STOP, data, &reply);
+        int ret = reply.readInt32();
+        return ret;
+    }
+    virtual int xWayRec_Read(void *buffer, int size_bytes)
+    {
+        ALOGV("xWayRec_Read");
+        Parcel data, reply;
+        data.writeInterfaceToken(IAudioFlinger::getInterfaceDescriptor());
+        data.writeInt32(size_bytes);
+        data.write(buffer,size_bytes);
+        remote()->transact(PCM_RECORD_READ, data, &reply);
+        reply.read(buffer, size_bytes);
+        int ret = reply.readInt32();
+        return ret;
+    }
+    virtual status_t GetEMParameter(void *ptr, size_t len)
+    {
+        Parcel data, reply;
+        data.writeInterfaceToken(IAudioFlinger::getInterfaceDescriptor());
+        data.writeInt32(len);
+        data.write(ptr,len);
+        remote()->transact(GET_EM_PARAMETER, data, &reply);
+        reply.read(ptr, len);
+        return OK;
+    }
+    virtual status_t SetEMParameter(void *ptr, size_t len)
+    {
+        Parcel data, reply;
+        data.writeInterfaceToken(IAudioFlinger::getInterfaceDescriptor());
+        data.writeInt32(len);
+        data.write(ptr,len);
+        remote()->transact(SET_EM_PARAMETER, data, &reply);
+        reply.read(ptr, len);
+        return OK;
+    }
+    virtual status_t SetAudioCommand(int var1,int var2)
+    {
+        Parcel data, reply;
+        data.writeInterfaceToken(IAudioFlinger::getInterfaceDescriptor());
+        data.writeInt32(var1);
+        data.writeInt32(var2);
+        remote()->transact(SET_AUDIO_COMMAND, data, &reply);
+        return  reply.readInt32();
+    }
+    virtual status_t GetAudioCommand(int var1)
+    {
+        Parcel data, reply;
+        data.writeInterfaceToken(IAudioFlinger::getInterfaceDescriptor());
+        data.writeInt32(var1);
+        remote()->transact(GET_AUDIO_COMMAND, data, &reply);
+        return  reply.readInt32();
+    }
+    virtual status_t SetAudioData(int par1, size_t len,void *ptr)
+    {
+        Parcel data, reply;
+        data.writeInterfaceToken(IAudioFlinger::getInterfaceDescriptor());
+        data.writeInt32(par1);
+        data.writeInt32(len);
+        data.write(ptr,len);
+        remote()->transact(SET_AUDIO_DATA, data, &reply);
+        reply.read(ptr, len);
+        return OK;
+    }
+    virtual status_t GetAudioData(int par1,size_t len,void *ptr)
+    {
+        Parcel data, reply;
+        data.writeInterfaceToken(IAudioFlinger::getInterfaceDescriptor());
+        data.writeInt32(par1);
+        data.writeInt32(len);
+        data.write(ptr,len);
+        remote()->transact(GET_AUDIO_DATA, data, &reply);
+        reply.read(ptr, len);
+        return OK;
+    }
+    virtual status_t SetACFPreviewParameter(void *ptr, size_t len)
+    {
+        Parcel data, reply;
+
+        ALOGD("IAudioFlinger::SetACFPreviewParameter!!");
+        data.writeInterfaceToken(IAudioFlinger::getInterfaceDescriptor());
+        data.writeInt32(len);
+        data.write(ptr,len);
+        remote()->transact(SET_ACF_PREVIEW_PARAMETER, data, &reply);
+        reply.read(ptr, len);
+        return OK;
+
+    }
+
+    virtual status_t SetHCFPreviewParameter(void *ptr, size_t len)
+    {
+        Parcel data, reply;
+
+        ALOGD("IAudioFlinger::SetHCFPreviewParameter!! 0");
+        data.writeInterfaceToken(IAudioFlinger::getInterfaceDescriptor());
+        ALOGD("IAudioFlinger::SetHCFPreviewParameter!! 1");
+        data.writeInt32(len);
+        ALOGD("IAudioFlinger::SetHCFPreviewParameter!! 2");
+        data.write(ptr,len);
+        ALOGD("IAudioFlinger::SetHCFPreviewParameter!! 3");
+        remote()->transact(SET_HCF_PREVIEW_PARAMETER, data, &reply);
+        ALOGD("IAudioFlinger::SetHCFPreviewParameter!! 4 remote()->transact done");
+        reply.read(ptr, len);
+        ALOGD("IAudioFlinger::SetHCFPreviewParameter!! 5 return OK");
+        return OK;
+
+    }
+    //added by wendy
+    virtual int ReadRefFromRing(void*buf, uint32_t datasz,void* DLtime)
+    {
+        ALOGV("ReadRefFromRing");
+        Parcel data, reply;
+        data.writeInterfaceToken(IAudioFlinger::getInterfaceDescriptor());
+        data.writeInt32(datasz);
+        remote()->transact(Read_Ref_FromRing, data, &reply);
+        reply.read(buf, datasz);
+        reply.read(DLtime, 16);
+        int ret = reply.readInt32();
+        ALOGW("ReadRefFromRing %d", ret);
+        return ret;
+    }
+
+    virtual int GetVoiceUnlockULTime(void* DLtime)
+    {
+        ALOGV("GetVoiceUnlockULTime");
+        Parcel data, reply;
+        data.writeInterfaceToken(IAudioFlinger::getInterfaceDescriptor());
+        data.write(DLtime,16);
+        remote()->transact(Get_Voice_Unlock_ULTime, data, &reply);
+        reply.read(DLtime, 16);
+        int ret = reply.readInt32();
+        return ret;
+    }
+    virtual int SetVoiceUnlockSRC(uint outSR, uint outCH)
+    {
+        ALOGV("SetVoiceUnlockSRC");
+        Parcel data, reply;
+        data.writeInterfaceToken(IAudioFlinger::getInterfaceDescriptor());
+        data.writeInt32(outSR);
+        data.writeInt32(outCH);
+        remote()->transact(Set_Voice_Unlock_SRC, data, &reply);
+        int ret = reply.readInt32();
+        return ret;
+    }
+
+    virtual bool startVoiceUnlockDL()
+    {
+        ALOGV("startVoiceUnlockDL");
+        Parcel data, reply;
+        data.writeInterfaceToken(IAudioFlinger::getInterfaceDescriptor());
+        remote()->transact(start_Voice_Unlock_DL, data, &reply);
+        int ret = reply.readInt32();
+        return ret;
+    }
+    virtual bool stopVoiceUnlockDL()
+    {
+        ALOGV("stopVoiceUnlockDL");
+        Parcel data, reply;
+        data.writeInterfaceToken(IAudioFlinger::getInterfaceDescriptor());
+        remote()->transact(stop_Voice_Unlock_DL, data, &reply);
+        int ret = reply.readInt32();
+        return ret;
+    }
+
+    virtual void freeVoiceUnlockDLInstance ()
+    {
+        ALOGV("freeVoiceUnlockDLInstance ");
+        Parcel data, reply;
+        data.writeInterfaceToken(IAudioFlinger::getInterfaceDescriptor());
+        remote()->transact(free_Voice_Unlock_DL_Instance , data, &reply);
+        return ;
+    }
+
+    virtual bool getVoiceUnlockDLInstance()
+    {
+        ALOGV("getVoiceUnlockDLInstance");
+        Parcel data, reply;
+        data.writeInterfaceToken(IAudioFlinger::getInterfaceDescriptor());
+        remote()->transact(get_Voice_Unlock_DL_Instance, data, &reply);
+        bool ret = reply.readInt32();
+        return ret;
+    }
+    virtual int GetVoiceUnlockDLLatency()
+    {
+         ALOGV("GetVoiceUnlockDLLatency");
+         Parcel data, reply;
+         data.writeInterfaceToken(IAudioFlinger::getInterfaceDescriptor());
+         remote()->transact(Get_Voice_Unlock_DL_Latency, data, &reply);
+         int ret = reply.readInt32();
+         return ret;
+    }
+#endif
 };
 
 IMPLEMENT_META_INTERFACE(AudioFlinger, "android.media.IAudioFlinger");
@@ -1195,6 +1468,235 @@ status_t BnAudioFlinger::onTransact(
             reply->writeInt32(setLowRamDevice(isLowRamDevice));
             return NO_ERROR;
         } break;
+#ifdef MTK_AUDIO
+        // add by chipeng for EM mode Setting
+        case GET_EM_PARAMETER:
+        {
+            CHECK_INTERFACE(IAudioFlinger, data, reply);
+            size_t size = data.readInt32();
+            void *params = malloc(size);
+            data.read(params, size);
+            status_t err = GetEMParameter(params,size);
+            reply->write( params,size);
+            free(params);
+            return NO_ERROR;
+        }break;
+        case SET_EM_PARAMETER:
+        {
+            CHECK_INTERFACE(IAudioFlinger, data, reply);
+            size_t size = data.readInt32();
+            void *params = malloc(size);
+            data.read(params, size);
+            status_t err = SetEMParameter(params,size);
+            reply->write(params,size);
+            free(params);
+            return NO_ERROR;
+        }break;
+        case SET_AUDIO_COMMAND:
+        {
+            CHECK_INTERFACE(IAudioFlinger, data, reply);
+            int32_t command1 = data.readInt32();
+            int32_t command2 = data.readInt32();
+            reply->writeInt32(SetAudioCommand(command1,command2));
+            return NO_ERROR;
+        }break;
+        case GET_AUDIO_COMMAND:
+        {
+            CHECK_INTERFACE(IAudioFlinger, data, reply);
+            int32_t command1 = data.readInt32();
+            reply->writeInt32(GetAudioCommand(command1));
+            return NO_ERROR;
+        }break;
+        case SET_AUDIO_DATA:
+        {
+            CHECK_INTERFACE(IAudioFlinger, data, reply);
+            size_t command = data.readInt32();
+            size_t buf_size = data.readInt32();
+            void *params = malloc(buf_size);
+            data.read(params, buf_size);
+            status_t err = SetAudioData(command,buf_size,params);
+            reply->write(params,buf_size);
+            free(params);
+            return NO_ERROR;
+        }break;
+        case GET_AUDIO_DATA:
+        {
+            CHECK_INTERFACE(IAudioFlinger, data, reply);
+            size_t command = data.readInt32();
+            size_t buf_size = data.readInt32();
+            void *params = malloc(buf_size);
+            data.read(params, buf_size);
+            status_t err = GetAudioData(command,buf_size,params);
+            reply->write(params,buf_size);
+            free(params);
+            return NO_ERROR;
+        }break;
+        case SET_ACF_PREVIEW_PARAMETER:
+        {
+            ALOGD("IAudioFlinger  case SET_ACF_PREVIEW_PARAMETER SetACFPreviewParameter!! ");
+            CHECK_INTERFACE(IAudioFlinger, data, reply);
+            size_t size = data.readInt32();
+            void *params = malloc(size);
+            data.read(params, size);
+            status_t err = SetACFPreviewParameter(params,size);
+            reply->write( params,size);
+            free(params);
+            return NO_ERROR;
+        }break;
+        case SET_HCF_PREVIEW_PARAMETER:
+        {
+            ALOGD("IAudioFlinger  case SET_HCF_PREVIEW_PARAMETER SetHCFPreviewParameter!! ");
+            CHECK_INTERFACE(IAudioFlinger, data, reply);
+            size_t size = data.readInt32();
+            void *params = malloc(size);
+            data.read(params, size);
+            status_t err = SetHCFPreviewParameter(params,size);
+            reply->write( params,size);
+            free(params);
+            return NO_ERROR;
+        }break;
+
+        /////////////////////////////////////////////////////////////////////////
+        //    for PCMxWay Interface API ...
+        /////////////////////////////////////////////////////////////////////////
+        case PCM_PLAY_START:
+        {
+            CHECK_INTERFACE(IAudioFlinger, data, reply);
+            size_t sample_rate = data.readInt32();
+            status_t err = xWayPlay_Start(sample_rate);
+            reply->writeInt32(err);
+            return NO_ERROR;
+        }break;
+        case PCM_PLAY_STOP:
+        {
+            CHECK_INTERFACE(IAudioFlinger, data, reply);
+            status_t err = xWayPlay_Stop();
+            reply->writeInt32(err);
+            return NO_ERROR;
+        }break;
+        case PCM_PLAY_WEITE:
+        {
+            CHECK_INTERFACE(IAudioFlinger, data, reply);
+            size_t size_bytes = data.readInt32();
+            void *buffer = malloc(size_bytes);
+            data.read(buffer, size_bytes);
+            status_t err = xWayPlay_Write(buffer,size_bytes);
+            reply->writeInt32(err);
+            free(buffer);
+            return NO_ERROR;
+        }
+        break;
+        case PCM_PLAY_GET_FREE_BUFFER_SIZE:
+        {
+            CHECK_INTERFACE(IAudioFlinger, data, reply);
+            status_t err = xWayPlay_GetFreeBufferCount();
+            reply->writeInt32(err);
+            return NO_ERROR;
+        }
+        break;
+        case PCM_RECORD_START:
+        {
+            CHECK_INTERFACE(IAudioFlinger, data, reply);
+            size_t sample_rate = data.readInt32();
+            status_t err = xWayRec_Start(sample_rate);
+            reply->writeInt32(err);
+            return NO_ERROR;
+        }
+        break;
+        case PCM_RECORD_STOP:
+        {
+            CHECK_INTERFACE(IAudioFlinger, data, reply);
+            status_t err = xWayRec_Stop();
+            reply->writeInt32(err);
+            return NO_ERROR;
+        }break;
+        case PCM_RECORD_READ:
+        {
+            CHECK_INTERFACE(IAudioFlinger, data, reply);
+            size_t size_bytes = data.readInt32();
+            void *buffer = malloc(size_bytes);
+            data.read(buffer, size_bytes);
+            status_t err = xWayRec_Read(buffer,size_bytes);
+            reply->write(buffer,size_bytes);
+            reply->writeInt32(err);
+            free(buffer);
+            return NO_ERROR;
+        }break;
+        case Read_Ref_FromRing:
+        {
+            CHECK_INTERFACE(IAudioFlinger, data, reply);
+            size_t size_bytes = data.readInt32();
+            void *buffer = malloc(size_bytes);
+            void *DLtime = malloc(16);
+            status_t err = ReadRefFromRing(buffer,size_bytes, DLtime);
+            reply->write(buffer,size_bytes);
+            reply->write(DLtime,16);
+            reply->writeInt32(err);
+            free(buffer);
+            free(DLtime);
+            return NO_ERROR;
+        }break;
+        case Get_Voice_Unlock_ULTime:
+        {
+            CHECK_INTERFACE(IAudioFlinger, data, reply);
+            void *DLtime = malloc(16);
+            data.read(DLtime, 16);
+            status_t err = GetVoiceUnlockULTime(DLtime);
+            reply->write(DLtime,16);
+            reply->writeInt32(err);
+            free(DLtime);
+            return NO_ERROR;
+        }break;
+        case Set_Voice_Unlock_SRC:
+        {
+            CHECK_INTERFACE(IAudioFlinger, data, reply);
+            size_t outSR = data.readInt32();
+            size_t outCH = data.readInt32();
+            status_t err = SetVoiceUnlockSRC(outSR, outCH);
+            reply->writeInt32(err);
+            return NO_ERROR;
+        }
+        break;
+        case start_Voice_Unlock_DL:
+        {
+            CHECK_INTERFACE(IAudioFlinger, data, reply);
+            status_t err = startVoiceUnlockDL();
+            reply->writeInt32(err);
+            return NO_ERROR;
+        }
+        break;
+        case stop_Voice_Unlock_DL:
+        {
+            CHECK_INTERFACE(IAudioFlinger, data, reply);
+            status_t err = stopVoiceUnlockDL();
+            reply->writeInt32(err);
+            return NO_ERROR;
+        }
+        break;
+        case free_Voice_Unlock_DL_Instance:
+        {
+            CHECK_INTERFACE(IAudioFlinger, data, reply);
+            freeVoiceUnlockDLInstance();
+            return NO_ERROR;
+        }
+        break;
+        case get_Voice_Unlock_DL_Instance:
+        {
+            CHECK_INTERFACE(IAudioFlinger, data, reply);
+            bool err = getVoiceUnlockDLInstance();
+            reply->writeInt32(err);
+            return NO_ERROR;
+        }
+        break;
+        case Get_Voice_Unlock_DL_Latency:
+        {
+            CHECK_INTERFACE(IAudioFlinger, data, reply);
+            int err = GetVoiceUnlockDLLatency();
+            reply->writeInt32(err);
+            return NO_ERROR;
+        }
+        break;
+#endif
         default:
             return BBinder::onTransact(code, data, reply, flags);
     }
