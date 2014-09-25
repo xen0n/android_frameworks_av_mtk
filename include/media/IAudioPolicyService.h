@@ -99,6 +99,10 @@ public:
    // Check if offload is possible for given format, stream type, sample rate,
     // bit rate, duration, video and streaming or offload property is enabled
     virtual bool isOffloadSupported(const audio_offload_info_t& info) = 0;
+
+#ifdef MTK_AUDIO
+    virtual status_t SetPolicyManagerParameters(int par1,int par2 ,int par3,int par4) = 0;
+#endif
 };
 
 

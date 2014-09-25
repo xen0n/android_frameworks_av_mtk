@@ -58,6 +58,11 @@ enum {
     SET_EFFECT_ENABLED,
     IS_STREAM_ACTIVE_REMOTELY,
     IS_OFFLOAD_SUPPORTED
+
+#ifdef MTK_AUDIO
+    ,
+    SET_POLICYMANAGER_PARAMETERS
+#endif
 };
 
 class BpAudioPolicyService : public BpInterface<IAudioPolicyService>
@@ -390,6 +395,20 @@ public:
         data.write(&info, sizeof(audio_offload_info_t));
         remote()->transact(IS_OFFLOAD_SUPPORTED, data, &reply);
         return reply.readInt32();    }
+
+    #ifdef MTK_AUDIO
+    virtual status_t SetPolicyManagerParameters(int par1,int par2 ,int par3,int par4)
+    {
+        Parcel data, reply;
+        data.writeInterfaceToken(IAudioPolicyService::getInterfaceDescriptor());
+        data.writeInt32(par1);
+        data.writeInt32(par2);
+        data.writeInt32(par3);
+        data.writeInt32(par4);
+        remote()->transact(SET_POLICYMANAGER_PARAMETERS, data, &reply);
+        return static_cast <status_t> (reply.readInt32());
+    }
+    #endif
 };
 
 IMPLEMENT_META_INTERFACE(AudioPolicyService, "android.media.IAudioPolicyService");
@@ -683,6 +702,18 @@ status_t BnAudioPolicyService::onTransact(
             reply->writeInt32(isSupported);
             return NO_ERROR;
         }
+
+        #ifdef MTK_AUDIO
+        case SET_POLICYMANAGER_PARAMETERS: {
+            CHECK_INTERFACE(IAudioPolicyService, data, reply);
+            int par1 =data.readInt32();
+            int par2 =data.readInt32();
+            int par3 =data.readInt32();
+            int par4 =data.readInt32();
+            reply->writeInt32(SetPolicyManagerParameters(par1,par2,par3,par4));
+            return NO_ERROR;
+        }
+        #endif
 
         default:
             return BBinder::onTransact(code, data, reply, flags);
