@@ -102,6 +102,7 @@ enum {
     free_Voice_Unlock_DL_Instance,
     get_Voice_Unlock_DL_Instance,
     Get_Voice_Unlock_DL_Latency,
+#endif
 };
 
 class BpAudioFlinger : public BpInterface<IAudioFlinger>
