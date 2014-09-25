@@ -1150,6 +1150,7 @@ status_t AudioSystem::GetEMParameter(void *ptr,size_t len)
 }
 
 status_t AudioSystem::SetEMParameter(void *ptr,size_t len)
+{
 #ifdef MTK_AUDIO
     const sp<IAudioFlinger>& af = AudioSystem::get_audio_flinger();
     if (af == 0) return PERMISSION_DENIED;
