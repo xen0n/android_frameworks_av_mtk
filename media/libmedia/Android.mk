@@ -86,6 +86,14 @@ ifeq ($(BOARD_USES_QCOM_HARDWARE),true)
     endif
 endif
 
+ifeq ($(BOARD_USE_MTK_AUDIO),true)
+LOCAL_SRC_FILES += \
+    ../../../../frameworks-ext/av/media/libmedia/AudioPCMxWay.cpp \
+    ../../../../frameworks-ext/av/media/libmedia/ATVCtrl.cpp \
+    ../../../../frameworks-ext/av/media/libmedia/IATVCtrlClient.cpp \
+    ../../../../frameworks-ext/av/media/libmedia/IATVCtrlService.cpp
+endif
+
 # for <cutils/atomic-inline.h>
 LOCAL_CFLAGS += -DANDROID_SMP=$(if $(findstring true,$(TARGET_CPU_SMP)),1,0)
 LOCAL_SRC_FILES += SingleStateQueue.cpp
@@ -113,6 +121,10 @@ LOCAL_C_INCLUDES := \
     $(TOP)/frameworks/native/include/media/openmax \
     external/icu4c/common \
     $(call include-path-for, audio-effects) \
-    $(call include-path-for, audio-utils)
+    $(call include-path-for, audio-utils) \
+    $(TOP)/frameworks-ext/av/include \
+    hardware/mediatek/mt6592/audio/include \
+    hardware/mediatek/common/audio/include \
+    #$(TOP)/frameworks-ext/av/include/media
 
 include $(BUILD_SHARED_LIBRARY)

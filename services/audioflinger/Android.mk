@@ -49,7 +49,10 @@ LOCAL_SRC_FILES += StateQueue.cpp
 
 LOCAL_C_INCLUDES := \
     $(call include-path-for, audio-effects) \
-    $(call include-path-for, audio-utils)
+    $(call include-path-for, audio-utils) \
+    $(TOP)/frameworks-ext/av/include/media \
+    hardware/mediatek/mt6592/audio/include \
+    hardware/mediatek/common/audio/include \
 
 LOCAL_SHARED_LIBRARIES := \
     libaudioutils \

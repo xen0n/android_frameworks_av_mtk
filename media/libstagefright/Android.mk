@@ -87,6 +87,9 @@ LOCAL_C_INCLUDES:= \
         $(TOP)/external/flac/include \
         $(TOP)/external/tremolo \
         $(TOP)/external/openssl/include \
+        $(TOP)/frameworks-ext/av/include/media \
+        hardware/mediatek/mt6592/audio/include \
+        hardware/mediatek/common/audio/include \
 
 ifneq ($(TI_CUSTOM_DOMX_PATH),)
 LOCAL_C_INCLUDES += $(TI_CUSTOM_DOMX_PATH)/omx_core/inc

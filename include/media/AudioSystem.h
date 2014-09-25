@@ -26,6 +26,10 @@
 #include <utils/Errors.h>
 #include <utils/Mutex.h>
 
+#ifdef MTK_AUDIO
+#include <AudioPolicyParameters.h>
+#endif
+
 namespace android {
 
 typedef void (*audio_error_callback)(status_t err);
