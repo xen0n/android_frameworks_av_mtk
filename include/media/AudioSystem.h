@@ -27,7 +27,7 @@
 #include <utils/Mutex.h>
 
 #ifdef MTK_AUDIO
-#include <AudioPolicyParameters.h>
+#include "../../../../hardware/mediatek/common/audio/include/AudioPolicyParameters.h"
 #endif
 
 namespace android {
