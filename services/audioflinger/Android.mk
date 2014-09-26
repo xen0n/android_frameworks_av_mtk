@@ -77,7 +77,7 @@ LOCAL_STATIC_LIBRARIES := \
 #mtk added
 ifeq ($(strip $(BOARD_USES_MTK_AUDIO)),true)
 AudioDriverIncludePath := aud_drv
-LOCAL_MTK_PATH:=../../../../mediatek/frameworks-ext/av/services/audioflinger
+LOCAL_MTK_PATH:=../../../../frameworks-ext/av/services/audioflinger
 
 LOCAL_CFLAGS += -DMTK_AUDIO
 
@@ -85,9 +85,11 @@ LOCAL_C_INCLUDES += \
     frameworks-ext/av/include/media \
     frameworks-ext/av/services/audioflinger \
     hardware/mediatek/common/audio/include/aud_drv \
-    hardware/mediatek/common/audio/ \
+    hardware/mediatek/common/audio \
+    hardware/mediatek/common/audio/include \
     hardware/mediatek/mt6592/audio/aud_drv \
-    hardware/mediatek/mt6592/audio
+    hardware/mediatek/mt6592/audio \
+    hardware/mediatek/mt6592/audio/include \
     #$(TOP)/mediatek/kernel/include
 
 LOCAL_SRC_FILES += \
