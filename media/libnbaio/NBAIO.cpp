@@ -19,7 +19,6 @@
 
 #include <utils/Log.h>
 #include <media/nbaio/NBAIO.h>
-#include <system/audio.h>
 
 namespace android {
 

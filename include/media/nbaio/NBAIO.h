@@ -29,6 +29,7 @@
 #include <utils/Errors.h>
 #include <utils/RefBase.h>
 #include <media/AudioTimestamp.h>
+#include <system/audio.h>
 
 namespace android {
 
