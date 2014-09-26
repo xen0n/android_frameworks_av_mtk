@@ -107,6 +107,41 @@ class AudioFlinger :
 public:
     static const char* getServiceName() ANDROID_API { return "media.audio_flinger"; }
 
+#ifdef MTK_AUDIO
+    /////////////////////////////////////////////////////////////////////////
+    //    for PCMxWay Interface API ...   Stan
+    /////////////////////////////////////////////////////////////////////////
+    virtual int xWayPlay_Start(int sample_rate);
+    virtual int xWayPlay_Stop(void);
+    virtual int xWayPlay_Write(void *buffer, int size_bytes);
+    virtual int xWayPlay_GetFreeBufferCount(void);
+    virtual int xWayRec_Start(int sample_rate);
+    virtual int xWayRec_Stop(void);
+    virtual int xWayRec_Read(void *buffer, int size_bytes);
+
+    // add by chipeng to EM mode setting
+    virtual status_t GetEMParameter(void *ptr, size_t len);
+    virtual status_t SetEMParameter(void *ptr, size_t len);
+    virtual status_t SetAudioData(int par1,size_t len,void *ptr);
+    virtual status_t GetAudioData(int par1,size_t len,void *ptr);
+    virtual status_t SetAudioCommand(int parameters1,int parameters2);
+    virtual status_t GetAudioCommand(int parameters1);
+
+    //add by Tina, set acf preview param
+    virtual status_t SetACFPreviewParameter(void *ptr, size_t len);
+    virtual status_t SetHCFPreviewParameter(void *ptr, size_t len);
+
+    //wendy, get voice unlock dl object.
+    virtual status_t ReadRefFromRing(void*buf, uint32_t datasz, void* DLtime);
+    virtual int GetVoiceUnlockULTime(void* DLtime);
+    virtual status_t SetVoiceUnlockSRC(uint outSR, uint outChannel);
+    virtual bool startVoiceUnlockDL();
+    virtual bool stopVoiceUnlockDL();
+    virtual void freeVoiceUnlockDLInstance();
+    virtual int GetVoiceUnlockDLLatency();
+    virtual bool getVoiceUnlockDLInstance();
+#endif
+
     virtual     status_t    dump(int fd, const Vector<String16>& args);
 
     // IAudioFlinger interface, in binder opcode order
@@ -826,6 +861,10 @@ public:
     // In this case, it's safe because the return value isn't used for making an important decision.
     // The reason we don't want to take mLock is because it could block the caller for a long time.
     bool    isLowRamDevice() const { return mIsLowRamDevice; }
+
+#ifdef MTK_AUDIO
+    sp<EffectHandle> eff_handle;
+#endif
 
 private:
     bool    mIsLowRamDevice;
