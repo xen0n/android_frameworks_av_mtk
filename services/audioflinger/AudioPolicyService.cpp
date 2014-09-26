@@ -641,7 +641,16 @@ bool AudioPolicyService::isSourceActive(audio_source_t source) const
         return false;
     }
     Mutex::Autolock _l(mLock);
+
+#ifdef HAVE_PRE_KITKAT_AUDIO_POLICY_BLOB
+    if (source == AUDIO_SOURCE_HOTWORD)
+      source = AUDIO_SOURCE_VOICE_RECOGNITION;
+#endif
+
     return mpAudioPolicy->is_source_active(mpAudioPolicy, source);
+#else
+    return false;
+#endif
 }
 
 #ifdef MTK_AUDIO
