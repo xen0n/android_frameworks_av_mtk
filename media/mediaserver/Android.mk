@@ -37,7 +37,8 @@ LOCAL_C_INCLUDES := \
     frameworks/av/media/libmediaplayerservice \
     frameworks/av/services/medialog \
     frameworks/av/services/audioflinger \
-    frameworks/av/services/camera/libcameraservice
+    frameworks/av/services/camera/libcameraservice \
+    frameworks-ext/av/services/audioflinger \
 
 ifeq ($(strip $(AUDIO_FEATURE_ENABLED_LISTEN)),true)
   LOCAL_SHARED_LIBRARIES += liblisten
