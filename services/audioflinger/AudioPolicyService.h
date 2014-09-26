@@ -32,6 +32,10 @@
 #include <media/ToneGenerator.h>
 #include <media/AudioEffect.h>
 
+#ifdef MTK_AUDIO
+#include <AudioHeadsetDetect.h>
+#endif
+
 namespace android {
 
 // ----------------------------------------------------------------------------
@@ -110,6 +114,10 @@ public:
     virtual bool isStreamActiveRemotely(audio_stream_type_t stream, uint32_t inPastMs = 0) const;
     virtual bool isSourceActive(audio_source_t source) const;
 
+#ifdef MTK_AUDIO
+    virtual status_t SetPolicyManagerParameters(int par1, int par2, int par3 , int par4);
+#endif
+
     virtual status_t queryDefaultPreProcessing(int audioSession,
                                               effect_descriptor_t *descriptors,
                                               uint32_t *count);
@@ -180,6 +188,10 @@ private:
         // Thread virtuals
         virtual     void        onFirstRef();
         virtual     bool        threadLoop();
+
+#ifdef MTK_AUDIO
+        virtual    status_t     readyToRun();
+#endif
 
                     void        exit();
                     void        startToneCommand(ToneGenerator::tone_type type,
@@ -261,6 +273,9 @@ private:
         };
 
         Mutex   mLock;
+#ifdef MTK_AUDIO
+        Mutex   mFunLock; //ALPS00255939
+#endif
         Condition mWaitWorkCV;
         Vector <AudioCommand *> mAudioCommands; // list of pending commands
         ToneGenerator *mpToneGenerator;     // the tone generator
@@ -359,6 +374,11 @@ private:
     KeyedVector< audio_io_handle_t, InputDesc* > mInputs;
 
     power_module_t *mPowerModule;
+
+#ifdef MTK_AUDIO
+	HeadsetDetect * mHeadsetDetect;
+	static void AudioEarphoneCallback(void * user,int device,bool on);
+#endif
 };
 
 }; // namespace android

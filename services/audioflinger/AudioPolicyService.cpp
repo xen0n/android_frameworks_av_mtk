@@ -43,6 +43,26 @@
 #include <audio_effects/audio_effects_conf.h>
 #include <media/AudioParameter.h>
 
+#ifdef MTK_AUDIO
+#include <cutils/xlog.h>
+#include <linux/rtpm_prio.h>
+#include "AudioIoctl.h"
+#endif
+
+#ifdef MTK_AUDIO
+#define MTK_ALOG_V(fmt, arg...) SXLOGV(fmt, ##arg)
+#define MTK_ALOG_D(fmt, arg...) SXLOGD(fmt, ##arg)
+#define MTK_ALOG_W(fmt, arg...) SXLOGW(fmt, ##arg)
+#define MTK_ALOG_E(fmt, arg...) SXLOGE("Err: %5d:, "fmt, __LINE__, ##arg)
+#undef  ALOGV
+#define ALOGV   MTK_ALOG_V
+#else
+#define MTK_ALOG_V(fmt, arg...) do { } while(0)
+#define MTK_ALOG_D(fmt, arg...) do { } while(0)
+#define MTK_ALOG_W(fmt, arg...) do { } while(0)
+#define MTK_ALOG_E(fmt, arg...) do { } while(0)
+#endif
+
 namespace android {
 
 static const char kDeadlockedString[] = "AudioPolicyService may be deadlocked\n";
@@ -53,11 +73,50 @@ static const int kDumpLockSleepUs = 20000;
 
 static const nsecs_t kAudioCommandTimeout = 3000000000LL; // 3 seconds
 
+#ifdef MTK_AUDIO
+// return true if string nned to be filter
+static bool ParaMetersNeedFilter(String8 Pair){
+    //String8 FilterString1(keyAddtForceuseNormal);
+    String8 FilterString2(keyInitVoume);
+    String8 FilterString3(keySetStreamStart);
+    String8 FilterString4(keySetStreamStop);
+    String8 FilterString5(keySetRecordStreamStart);
+    String8 FilterString6(keySetRecordStreamStop);
+    MTK_ALOG_V("ParaMetersNeedFilter Pair = %s,",Pair.string ());
+    if(FilterString2 == Pair || FilterString3 == Pair
+	   || FilterString4 == Pair || FilterString5 == Pair || FilterString6 == Pair){
+        MTK_ALOG_V("Pair = %s",Pair.string ());
+        return false;
+    }
+    return true;
+}
+#endif //MTK_AUDIO
+
 namespace {
     extern struct audio_policy_service_ops aps_ops;
+
+#ifdef MTK_AUDIO
+    bool kHeadsetjavaStart = false;
+#endif
+
 };
 
 // ----------------------------------------------------------------------------
+
+#ifdef MTK_AUDIO
+//static
+void AudioPolicyService::AudioEarphoneCallback(void *  user,int device, bool on)
+{
+    ALOGD("+AudioEarphoneCallback device 0x%x, on %d",device,on);
+    AudioPolicyService * policy = (AudioPolicyService * )user;
+    const char * addr="";
+    audio_policy_dev_state_t state = \
+        on ? AUDIO_POLICY_DEVICE_STATE_AVAILABLE : AUDIO_POLICY_DEVICE_STATE_UNAVAILABLE;
+
+     policy->setDeviceConnectionState((audio_devices_t)device,state,addr);
+    ALOGD("-AudioEarphoneCallback device 0x%x, on %d",device,on);
+}
+#endif
 
 AudioPolicyService::AudioPolicyService()
     : BnAudioPolicyService() , mpAudioPolicyDev(NULL) , mpAudioPolicy(NULL)
@@ -99,6 +158,12 @@ AudioPolicyService::AudioPolicyService()
     rc = hw_get_module(POWER_HARDWARE_MODULE_ID, (const hw_module_t **)&mPowerModule);
     ALOGW_IF(rc, "couldn't get power module (%s)", strerror(-rc));
 
+    #ifdef MTK_AUDIO
+    property_get("ro.camera.sound.forced", value, "0");
+    forced_val = strtol(value, NULL, 0);
+    mpAudioPolicy->set_can_mute_enforced_audible(mpAudioPolicy, !forced_val);
+    #endif
+
     ALOGI("Loaded audio policy from %s (%s)", module->name, module->id);
 
     // load audio pre processing modules
@@ -107,6 +172,11 @@ AudioPolicyService::AudioPolicyService()
     } else if (access(AUDIO_EFFECT_DEFAULT_CONFIG_FILE, R_OK) == 0) {
         loadPreProcessorConfig(AUDIO_EFFECT_DEFAULT_CONFIG_FILE);
     }
+
+#ifdef MTK_AUDIO
+    mHeadsetDetect = new HeadsetDetect(this,&AudioEarphoneCallback);  //earphone callback
+    if(mHeadsetDetect) mHeadsetDetect->start();
+#endif
 }
 
 AudioPolicyService::~AudioPolicyService()
@@ -133,6 +203,11 @@ AudioPolicyService::~AudioPolicyService()
         mpAudioPolicyDev->destroy_audio_policy(mpAudioPolicyDev, mpAudioPolicy);
     if (mpAudioPolicyDev != NULL)
         audio_policy_dev_close(mpAudioPolicyDev);
+
+#ifdef MTK_AUDIO
+    if(mHeadsetDetect)
+        delete mHeadsetDetect;
+#endif
 }
 
 status_t AudioPolicyService::setDeviceConnectionState(audio_devices_t device,
@@ -153,8 +228,19 @@ status_t AudioPolicyService::setDeviceConnectionState(audio_devices_t device,
         return BAD_VALUE;
     }
 
-    ALOGV("setDeviceConnectionState()");
+    ALOGV("setDeviceConnectionState() tid %d", gettid());
     Mutex::Autolock _l(mLock);
+#ifdef MTK_AUDIO
+    if(!kHeadsetjavaStart && mHeadsetDetect!=NULL)
+    {
+        //if this function is called by other threads, headsetdetect can exit.
+        if(!mHeadsetDetect->isCurrentThread())
+        {
+            kHeadsetjavaStart = true;
+            mHeadsetDetect->stop();
+        }
+    }
+#endif
     return mpAudioPolicy->set_device_connection_state(mpAudioPolicy, device,
                                                       state, device_address);
 }
@@ -182,13 +268,14 @@ status_t AudioPolicyService::setPhoneState(audio_mode_t state)
         return BAD_VALUE;
     }
 
-    ALOGV("setPhoneState()");
+    ALOGD("+setPhoneState() tid %d", gettid());
 
     // TODO: check if it is more appropriate to do it in platform specific policy manager
     AudioSystem::setMode(state);
 
     Mutex::Autolock _l(mLock);
     mpAudioPolicy->set_phone_state(mpAudioPolicy, state);
+    ALOGD("-setPhoneState() tid %d", gettid());
     return NO_ERROR;
 }
 
@@ -207,7 +294,7 @@ status_t AudioPolicyService::setForceUse(audio_policy_force_use_t usage,
     if (config < 0 || config >= AUDIO_POLICY_FORCE_CFG_CNT) {
         return BAD_VALUE;
     }
-    ALOGV("setForceUse()");
+    ALOGV("setForceUse() tid %d", gettid());
     Mutex::Autolock _l(mLock);
     mpAudioPolicy->set_force_use(mpAudioPolicy, usage, config);
     return NO_ERROR;
@@ -234,7 +321,7 @@ audio_io_handle_t AudioPolicyService::getOutput(audio_stream_type_t stream,
     if (mpAudioPolicy == NULL) {
         return 0;
     }
-    ALOGV("getOutput()");
+    ALOGV("getOutput() tid %d", gettid());
     Mutex::Autolock _l(mLock);
     return mpAudioPolicy->get_output(mpAudioPolicy, stream, samplingRate,
                                     format, channelMask, flags, offloadInfo);
@@ -247,7 +334,7 @@ status_t AudioPolicyService::startOutput(audio_io_handle_t output,
     if (mpAudioPolicy == NULL) {
         return NO_INIT;
     }
-    ALOGV("startOutput()");
+    ALOGV("startOutput() tid %d", gettid());
     Mutex::Autolock _l(mLock);
     setPowerHint(true);
     return mpAudioPolicy->start_output(mpAudioPolicy, output, stream, session);
@@ -260,7 +347,7 @@ status_t AudioPolicyService::stopOutput(audio_io_handle_t output,
     if (mpAudioPolicy == NULL) {
         return NO_INIT;
     }
-    ALOGV("stopOutput()");
+    ALOGV("stopOutput() tid %d", gettid());
     mOutputCommandThread->stopOutputCommand(output, stream, session);
     return NO_ERROR;
 }
@@ -281,7 +368,7 @@ void AudioPolicyService::releaseOutput(audio_io_handle_t output)
     if (mpAudioPolicy == NULL) {
         return;
     }
-    ALOGV("releaseOutput()");
+    ALOGV("releaseOutput() tid %d", gettid());
     mOutputCommandThread->releaseOutputCommand(output);
 }
 
@@ -554,17 +641,20 @@ bool AudioPolicyService::isSourceActive(audio_source_t source) const
         return false;
     }
     Mutex::Autolock _l(mLock);
-
-#ifdef HAVE_PRE_KITKAT_AUDIO_POLICY_BLOB
-    if (source == AUDIO_SOURCE_HOTWORD)
-      source = AUDIO_SOURCE_VOICE_RECOGNITION;
-#endif
-
     return mpAudioPolicy->is_source_active(mpAudioPolicy, source);
-#else
-    return false;
-#endif
 }
+
+#ifdef MTK_AUDIO
+status_t AudioPolicyService::SetPolicyManagerParameters(int par1, int par2, int par3 , int par4)
+{
+    if (mpAudioPolicy == NULL) {
+        return 0;
+    }
+    //SetPolicyManagerParameters no need to hold mlock.
+    //Mutex::Autolock _l(mLock);
+    return mpAudioPolicy->set_policy_parameters(mpAudioPolicy, par1, par2,par3,par4);
+}
+#endif
 
 status_t AudioPolicyService::queryDefaultPreProcessing(int audioSession,
                                                        effect_descriptor_t *descriptors,
@@ -611,7 +701,7 @@ void AudioPolicyService::setPowerHint(bool active) {
 }
 
 void AudioPolicyService::binderDied(const wp<IBinder>& who) {
-    ALOGW("binderDied() %p, calling pid %d", who.unsafe_get(),
+    ALOGW("binderDied() %p, tid %d, calling pid %d", who.unsafe_get(), gettid(),
             IPCThreadState::self()->getCallingPid());
 }
 
@@ -714,6 +804,9 @@ AudioPolicyService::AudioCommandThread::AudioCommandThread(String8 name,
 
 AudioPolicyService::AudioCommandThread::~AudioCommandThread()
 {
+    if (mName != "" && !mAudioCommands.isEmpty()) {
+        release_wake_lock(mName.string());
+    }
     for (size_t k=0; k < mAudioCommands.size(); k++) {
         delete mAudioCommands[k]->mParam;
         delete mAudioCommands[k];
@@ -724,8 +817,30 @@ AudioPolicyService::AudioCommandThread::~AudioCommandThread()
 
 void AudioPolicyService::AudioCommandThread::onFirstRef()
 {
-    run(mName.string(), ANDROID_PRIORITY_AUDIO);
+    if (mName != "") {
+        run(mName.string(), ANDROID_PRIORITY_AUDIO);
+    } else {
+        run("AudioCommand", ANDROID_PRIORITY_AUDIO);
+    }
 }
+
+#ifdef MTK_AUDIO
+status_t AudioPolicyService::AudioCommandThread::readyToRun()
+{
+    struct sched_param sched_p;
+    sched_getparam(0, &sched_p);
+    sched_p.sched_priority = RTPM_PRIO_AUDIO_COMMAND;
+    if(0 != sched_setscheduler(0, SCHED_RR, &sched_p)) {
+        MTK_ALOG_E("[%s] failed, errno: %d", __func__, errno);
+    }
+    else {
+        sched_p.sched_priority = RTPM_PRIO_AUDIO_COMMAND;
+        sched_getparam(0, &sched_p);
+        MTK_ALOG_D("sched_setscheduler ok, priority: %d", sched_p.sched_priority);
+    }
+    return NO_ERROR;
+}
+#endif
 
 bool AudioPolicyService::AudioCommandThread::threadLoop()
 {
@@ -781,7 +896,20 @@ bool AudioPolicyService::AudioCommandThread::threadLoop()
                     ParametersData *data = (ParametersData *)command->mParam;
                     ALOGV("AudioCommandThread() processing set parameters string %s, io %d",
                             data->mKeyValuePairs.string(), data->mIO);
+#ifdef MTK_AUDIO
+                     AudioParameter param = AudioParameter(data->mKeyValuePairs);
+                     float value = 0.0;
+                     // use setmastervolume instead of setparameter
+                     if((param.getFloat (String8("SetMasterVolume"), value)) == NO_ERROR){
+                         MTK_ALOG_D("SET_PARAMETERS SetMasterVolume value = %f",value);
+                         AudioSystem::setMasterVolume (value);
+                     }
+                     else{
+                         command->mStatus = AudioSystem::setParameters(data->mIO, data->mKeyValuePairs);
+                     }
+#else
                     command->mStatus = AudioSystem::setParameters(data->mIO, data->mKeyValuePairs);
+#endif
                     if (command->mWaitStatus) {
                         command->mCond.signal();
                         command->mCond.waitRelative(mLock, kAudioCommandTimeout);
@@ -834,6 +962,10 @@ bool AudioPolicyService::AudioCommandThread::threadLoop()
                 waitTime = mAudioCommands[0]->mTime - curTime;
                 break;
             }
+        }
+        // release delayed commands wake lock
+        if (mName != "" && mAudioCommands.isEmpty()) {
+            release_wake_lock(mName.string());
         }
         ALOGV("AudioCommandThread() going to sleep");
         mWaitWorkCV.waitRelative(mLock, waitTime);
@@ -917,6 +1049,9 @@ status_t AudioPolicyService::AudioCommandThread::volumeCommand(audio_stream_type
     data->mVolume = volume;
     data->mIO = output;
     command->mParam = data;
+#ifdef MTK_AUDIO
+    Mutex::Autolock _t(mFunLock); //must get funlock;
+#endif
     Mutex::Autolock _l(mLock);
     insertCommand_l(command, delayMs);
     ALOGV("AudioCommandThread() adding set volume stream %d, volume %f, output %d",
@@ -942,6 +1077,9 @@ status_t AudioPolicyService::AudioCommandThread::parametersCommand(audio_io_hand
     data->mIO = ioHandle;
     data->mKeyValuePairs = String8(keyValuePairs);
     command->mParam = data;
+#ifdef MTK_AUDIO
+    Mutex::Autolock _t(mFunLock); //must get funlock;
+#endif
     Mutex::Autolock _l(mLock);
     insertCommand_l(command, delayMs);
     ALOGV("AudioCommandThread() adding set parameter string %s, io %d ,delay %d",
@@ -964,6 +1102,9 @@ status_t AudioPolicyService::AudioCommandThread::voiceVolumeCommand(float volume
     VoiceVolumeData *data = new VoiceVolumeData();
     data->mVolume = volume;
     command->mParam = data;
+#ifdef MTK_AUDIO
+    Mutex::Autolock _t(mFunLock); //must get funlock;
+#endif
     Mutex::Autolock _l(mLock);
     insertCommand_l(command, delayMs);
     ALOGV("AudioCommandThread() adding set voice volume volume %f", volume);
@@ -1011,8 +1152,37 @@ void AudioPolicyService::AudioCommandThread::insertCommand_l(AudioCommand *comma
 {
     ssize_t i;  // not size_t because i will count down to -1
     Vector <AudioCommand *> removedCommands;
+    nsecs_t time = 0;
+#ifdef MTK_AUDIO
+    //<----weiguo  alps00053099  adjust matv volume  when record sound stoping, matv sound will out through speaker.
+    //   delay  -1 to put volume setting command at the end of command queue in audiopolicy service
+    // attentation : this is only for matv, if for other type ,you should test it.
+    if(delayMs == -1)
+    {
+        int lastcmdid = mAudioCommands.size()-1;
+        if( lastcmdid >=0 )
+        {
+            AudioCommand *lastcommand = mAudioCommands[lastcmdid];
+            command->mTime = lastcommand->mTime + 1;  // put it at the end of command queue
+        }
+        else
+        {
+            command->mTime = systemTime(); //no command in queue.
+        }
+        //MTK_ALOG_V("command wait time=%lld ms",ns2ms(command->mTime - systemTime()));
+    }//weiguo---->
+    else
+    {
+        command->mTime = systemTime() + milliseconds(delayMs);
+    }
+#else
     command->mTime = systemTime() + milliseconds(delayMs);
+#endif
 
+    // acquire wake lock to make sure delayed commands are processed
+    if (mName != "" && mAudioCommands.isEmpty()) {
+        acquire_wake_lock(PARTIAL_WAKE_LOCK, mName.string());
+    }
 
     // check same pending commands with later time stamps and eliminate them
     for (i = mAudioCommands.size()-1; i >= 0; i--) {
@@ -1034,6 +1204,9 @@ void AudioPolicyService::AudioCommandThread::insertCommand_l(AudioCommand *comma
                 String8 key;
                 String8 value;
                 param.getAt(j, key, value);
+#ifdef MTK_AUDIO
+                if(!ParaMetersNeedFilter(key)) continue; // add policy for certain string
+#endif
                 for (size_t k = 0; k < param2.size(); k++) {
                     String8 key2;
                     String8 value2;
@@ -1048,6 +1221,9 @@ void AudioPolicyService::AudioCommandThread::insertCommand_l(AudioCommand *comma
             // if all keys have been filtered out, remove the command.
             // otherwise, update the key value pairs
             if (param2.size() == 0) {
+#ifdef MTK_AUDIO
+                delete data2;
+#endif
                 removedCommands.add(command2);
             } else {
                 data2->mKeyValuePairs = param2.toString();
@@ -1058,6 +1234,7 @@ void AudioPolicyService::AudioCommandThread::insertCommand_l(AudioCommand *comma
                 // command status as the command is now delayed
                 delayMs = 1;
             }
+            time = command2->mTime;
         } break;
 
         case SET_VOLUME: {
@@ -1067,11 +1244,15 @@ void AudioPolicyService::AudioCommandThread::insertCommand_l(AudioCommand *comma
             if (data->mStream != data2->mStream) break;
             ALOGV("Filtering out volume command on output %d for stream %d",
                     data->mIO, data->mStream);
+#ifdef MTK_AUDIO
+            delete data2;
+#endif
             removedCommands.add(command2);
             command->mTime = command2->mTime;
             // force delayMs to non 0 so that code below does not request to wait for
             // command status as the command is now delayed
             delayMs = 1;
+            time = command2->mTime;
         } break;
         case START_TONE:
         case STOP_TONE:
@@ -1097,11 +1278,15 @@ void AudioPolicyService::AudioCommandThread::insertCommand_l(AudioCommand *comma
     }
     removedCommands.clear();
 
-    // wait for status only if delay is 0
-    if (delayMs == 0) {
+    // wait for status only if delay is 0 and command time was not modified above
+    if (delayMs == 0 && time == 0) {
         command->mWaitStatus = true;
     } else {
         command->mWaitStatus = false;
+    }
+    // update command time if modified above
+    if (time != 0) {
+        command->mTime = time;
     }
 
     // insert command at the right place according to its time stamp
