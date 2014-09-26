@@ -41,6 +41,10 @@ public:
         MED_QUALITY=2,
         HIGH_QUALITY=3,
         VERY_HIGH_QUALITY=4,
+
+#ifdef MTK_AUDIO
+        MTK_QUALITY=5,
+#endif
     };
 
     static AudioResampler* create(int bitDepth, int inChannelCount,
