@@ -19,6 +19,7 @@
 
 #include <utils/Log.h>
 #include <media/nbaio/NBAIO.h>
+#include <system/audio.h>
 
 namespace android {
 
@@ -135,6 +136,12 @@ NBAIO_Format Format_from_SR_C(unsigned sampleRate, unsigned channelCount)
         return Format_Invalid;
     }
     return format;
+}
+
+NBAIO_Format Format_from_SR_C(unsigned sampleRate, unsigned channelCount, audio_format_t par3)
+{
+	// XXX: par3 is ignored, not sure why this overload is at all needed...
+	return Format_from_SR_C(sampleRate, channelCount);
 }
 
 // This is a default implementation; it is expected that subclasses will optimize this.

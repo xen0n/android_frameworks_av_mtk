@@ -65,6 +65,7 @@ size_t Format_frameBitShift(NBAIO_Format format);
 
 // Convert a sample rate in Hz and channel count to an NBAIO_Format
 NBAIO_Format Format_from_SR_C(unsigned sampleRate, unsigned channelCount);
+NBAIO_Format Format_from_SR_C(unsigned sampleRate, unsigned channelCount, audio_format_t par3);
 
 // Return the sample rate in Hz of an NBAIO_Format
 unsigned Format_sampleRate(NBAIO_Format format);
