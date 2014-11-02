@@ -42,6 +42,49 @@
 
 namespace android {
 
+#ifndef ANDROID_DEFAULT_CODE
+static bool setParameterForAudioST(const sp<IMediaPlayer>& player)   //For MP3 SeekTable
+{
+	sp<IMediaPlayer> p;
+	char process_name[40] = {0};
+	char filename[20] = {0};
+	FILE *f = NULL;
+	sprintf(filename, "/proc/%d/cmdline", getpid());
+
+	p = player;
+	f = fopen(filename, "r");
+	if (NULL == f)
+	{
+		*process_name = '\0';
+		return false;
+	}
+	if (!fgets(process_name, sizeof(process_name), f))
+	{
+		*process_name = '\0';
+		return false;
+	}
+	if(NULL != f)
+		fclose(f);
+	if(!strncasecmp(process_name, "com.android.music", 17))
+	{
+		Parcel request ;
+		status_t err;
+		request.writeInt32(1);
+		if (p != NULL)
+		{
+			err = p->setParameter(KEY_PARAMETER_AUDIO_SEEKTABLE, request);
+		}
+		ALOGD("%s can use seek table! return %d",process_name,err);
+	}
+	else
+	{
+		ALOGD("Don't notify duration to %s!",process_name);
+	}
+	return true;
+}
+#endif
+
+
 MediaPlayer::MediaPlayer()
 {
     ALOGV("constructor");
@@ -235,6 +278,11 @@ status_t MediaPlayer::prepareAsync_l()
     if ( (mPlayer != 0) && ( mCurrentState & ( MEDIA_PLAYER_INITIALIZED | MEDIA_PLAYER_STOPPED) ) ) {
         mPlayer->setAudioStreamType(mStreamType);
         mCurrentState = MEDIA_PLAYER_PREPARING;
+
+#ifndef ANDROID_DEFAULT_CODE
+	setParameterForAudioST(mPlayer);
+#endif
+
         return mPlayer->prepareAsync();
     }
     ALOGE("prepareAsync called in state %d", mCurrentState);
@@ -348,6 +396,13 @@ bool MediaPlayer::isPlaying()
 {
     Mutex::Autolock _l(mLock);
     if (mPlayer != 0) {
+#ifndef ANDROID_DEFAULT_CODE
+        if (mCurrentPosition >= 0)
+        {
+            ALOGV("in cached seek position");
+            return (mCurrentState & MEDIA_PLAYER_STARTED);
+        }
+#endif
         bool temp = false;
         mPlayer->isPlaying(&temp);
         ALOGV("isPlaying: %d", temp);
@@ -401,6 +456,13 @@ status_t MediaPlayer::getDuration_l(int *msec)
     if (mPlayer != 0 && isValidState) {
         int durationMs;
         status_t ret = mPlayer->getDuration(&durationMs);
+
+#ifndef ANDROID_DEFAULT_CODE
+        if (durationMs < 0) {
+            ALOGD("getDuration:%d < 0", durationMs);
+            durationMs = 0;
+        }
+#endif
 
         if (ret != OK) {
             // Do not enter error state just because no duration was available.

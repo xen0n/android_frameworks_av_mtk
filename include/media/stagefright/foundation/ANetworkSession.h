@@ -77,6 +77,29 @@ struct ANetworkSession : public RefBase {
             int32_t sessionID, const void *data, ssize_t size = -1,
             bool timeValid = false, int64_t timeUs = -1ll);
 
+    ///Add by MTK @{
+    status_t createTCPTextDataSession(
+            const struct in_addr &addr, unsigned port,
+            const sp<AMessage> &notify, int32_t *sessionID);
+
+    status_t createUIBCClient(
+            const char *host, unsigned port, const sp<AMessage> &notify,
+            int32_t *sessionID);
+
+    status_t createUIBCServer(
+            const struct in_addr &addr, unsigned port,
+            const sp<AMessage> &notify, int32_t *sessionID);
+
+    status_t sendDirectRequest(
+            int32_t sessionID, const void *data, ssize_t size);
+
+    status_t createTCPBinaryDataSessionActive(
+            unsigned localPort,
+            const char *remoteHost,
+            unsigned remotePort,
+            const sp<AMessage> &notify,
+            int32_t *sessionID);
+
     status_t switchToWebSocketMode(int32_t sessionID);
 
     enum NotificationReason {
@@ -88,6 +111,8 @@ struct ANetworkSession : public RefBase {
         kWhatBinaryData,
         kWhatWebSocketMessage,
         kWhatNetworkStall,
+        kWhatTextData,
+        kWhatUibcData
     };
 
 protected:
@@ -112,6 +137,14 @@ private:
         kModeCreateTCPDatagramSessionActive,
         kModeCreateRTSPServer,
         kModeCreateRTSPClient,
+        ///Add by MTK @{
+        kModeCreateTCPTextDataSessionPassive,
+        kModeCreateUIBCServer,
+        kModeCreateUIBCClient,
+#ifdef WFD_HDCP_TX_SUPPORT
+        kModeCreateTCPBinaryDataSessionActive,          // TCP binary data
+#endif
+        /// @}
     };
     status_t createClientOrServer(
             Mode mode,

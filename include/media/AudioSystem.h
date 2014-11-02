@@ -42,6 +42,33 @@ public:
      * only privileged processes can have access to them
      */
 
+    static int xWayPlay_Start(int sample_rate);
+    static int xWayPlay_Stop(void);
+    static int xWayPlay_Write(void *buffer, int size_bytes);
+    static int xWayPlay_GetFreeBufferCount(void);
+    static int xWayRec_Start(int sample_rate);
+    static int xWayRec_Stop(void);
+    static int xWayRec_Read(void *buffer, int size_bytes);
+
+    //add by wendy
+    static int ReadRefFromRing(void*buf, uint32_t datasz,void* DLtime);
+    static int GetVoiceUnlockULTime(void* DLtime);
+    static int SetVoiceUnlockSRC(uint outSR, uint outChannel);
+    static bool startVoiceUnlockDL();
+    static bool stopVoiceUnlockDL();
+    static void freeVoiceUnlockDLInstance();
+    static bool getVoiceUnlockDLInstance();
+    static int GetVoiceUnlockDLLatency();
+
+    //add . for AM mode set/get  parameters
+    static status_t GetEMParameter(void *ptr,size_t len);
+    static status_t SetEMParameter(void *ptr,size_t len);
+    static status_t SetAudioCommand(int par1,int par2);
+    static status_t GetAudioCommand(int par1, int *par2);
+    static status_t SetAudioData(int par1,size_t len, void *ptr);
+    static status_t GetAudioData(int par1,size_t len,void *ptr);
+    static status_t SetACFPreviewParameter(void *ptr,size_t len);
+    static status_t SetHCFPreviewParameter(void *ptr,size_t len);
     // mute/unmute microphone
     static status_t muteMicrophone(bool state);
     static status_t isMicrophoneMuted(bool *state);

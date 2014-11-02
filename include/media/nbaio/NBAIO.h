@@ -30,6 +30,10 @@
 #include <utils/RefBase.h>
 #include <media/AudioTimestamp.h>
 
+#ifdef MTK_HD_AUDIO_ARCHITECTURE
+#include <system/audio.h>
+#endif
+
 namespace android {
 
 // In addition to the usual status_t
@@ -65,6 +69,11 @@ size_t Format_frameBitShift(NBAIO_Format format);
 
 // Convert a sample rate in Hz and channel count to an NBAIO_Format
 NBAIO_Format Format_from_SR_C(unsigned sampleRate, unsigned channelCount);
+
+#ifdef MTK_HD_AUDIO_ARCHITECTURE
+NBAIO_Format Format_from_SR_C(unsigned sampleRate, unsigned channelCount,audio_format_t streamFormat );
+unsigned Format_wordCount(NBAIO_Format format);
+#endif
 
 // Return the sample rate in Hz of an NBAIO_Format
 unsigned Format_sampleRate(NBAIO_Format format);

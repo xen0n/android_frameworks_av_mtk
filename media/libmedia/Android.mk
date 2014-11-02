@@ -2,6 +2,9 @@ LOCAL_PATH:= $(call my-dir)
 
 include $(CLEAR_VARS)
 
+ifeq ($(strip $(MTK_USE_ANDROID_MM_DEFAULT_CODE)),yes)
+  LOCAL_CFLAGS += -DANDROID_DEFAULT_CODE
+endif
 LOCAL_SRC_FILES:= \
     AudioParameter.cpp
 LOCAL_MODULE:= libmedia_helper
@@ -21,6 +24,12 @@ include $(BUILD_SHARED_LIBRARY)
 endif
 
 include $(CLEAR_VARS)
+
+LOCAL_MTK_PATH:=../../../../mediatek/frameworks-ext/av/media/libmedia
+
+ifeq ($(strip $(MTK_USE_ANDROID_MM_DEFAULT_CODE)),yes)
+  LOCAL_CFLAGS += -DANDROID_DEFAULT_CODE
+endif
 
 LOCAL_SRC_FILES:= \
     AudioTrack.cpp \
@@ -86,6 +95,13 @@ ifeq ($(BOARD_USES_QCOM_HARDWARE),true)
     endif
 endif
 
+LOCAL_SRC_FILES += \
+    $(LOCAL_MTK_PATH)/AudioPCMxWay.cpp \
+    $(LOCAL_MTK_PATH)/ATVCtrl.cpp \
+    $(LOCAL_MTK_PATH)/IATVCtrlClient.cpp \
+    $(LOCAL_MTK_PATH)/IATVCtrlService.cpp \
+    $(LOCAL_MTK_PATH)/AudioTrackCenter.cpp
+
 # for <cutils/atomic-inline.h>
 LOCAL_CFLAGS += -DANDROID_SMP=$(if $(findstring true,$(TARGET_CPU_SMP)),1,0)
 LOCAL_SRC_FILES += SingleStateQueue.cpp
@@ -112,15 +128,44 @@ ifeq ($(BOARD_USES_QCOM_HARDWARE),true)
 LOCAL_SHARED_LIBRARIES += libaudioparameter
 endif
 
+LOCAL_STATIC_LIBRARIES += \
+        libmedia_helper
+ifneq ($(strip $(MTK_USE_ANDROID_MM_DEFAULT_CODE)),yes)
+LOCAL_SHARED_LIBRARIES += \
+        libvcodecdrv
+endif
+
 LOCAL_WHOLE_STATIC_LIBRARY := libmedia_helper
 
 LOCAL_MODULE:= libmedia
 
+ifeq ($(strip $(BOARD_USES_MTK_AUDIO)),true)
+  ifeq ($(strip $(MTK_HIGH_RESOLUTION_AUDIO_SUPPORT)),yes)
+    LOCAL_CFLAGS += -DMTK_24BIT_AUDIO_SUPPORT
+  endif
+endif
+
 LOCAL_C_INCLUDES := \
     $(call include-path-for, graphics corecg) \
     $(TOP)/frameworks/native/include/media/openmax \
+    $(TOP)/mediatek-min/external/mhal/src/core/drv/inc \
+    $(TOP)/bionic/libc/kernel/common/linux/vcodec \
+    $(TOP)/hardware/mediatek/mt6592/vcodec/inc \
     external/icu4c/common \
     $(call include-path-for, audio-effects) \
-    $(call include-path-for, audio-utils)
+    $(call include-path-for, audio-utils)   \
+    $(TOP)/frameworks-ext/av/include
+    # $(TOP)/$(MTK_PATH_SOURCE)/frameworks/av/include
+
+ifeq ($(strip $(BOARD_USES_MTK_AUDIO)),true)
+
+  LOCAL_C_INCLUDES+= \
+   $(TOP)/hardware/mediatek/common/audio/aud_drv \
+   $(TOP)/hardware/mediatek/common/audio/include \
+   $(TOP)/hardware/mediatek/common/audio \
+   $(TOP)/hardware/mediatek/mt6592/audio/aud_drv \
+   $(TOP)/hardware/mediatek/mt6592/audio/include \
+   $(TOP)/hardware/mediatek/mt6592/audio
+endif
 
 include $(BUILD_SHARED_LIBRARY)

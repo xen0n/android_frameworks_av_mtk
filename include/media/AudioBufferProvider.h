@@ -32,6 +32,7 @@ public:
         Buffer() : raw(NULL), frameCount(0) { }
         union {
             void*       raw;
+            int32_t*    i32;
             short*      i16;
             int8_t*     i8;
         };

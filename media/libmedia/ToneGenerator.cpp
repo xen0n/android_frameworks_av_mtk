@@ -813,6 +813,13 @@ const unsigned char /*tone_type*/ ToneGenerator::sToneMappingTable[NUM_REGIONS-1
 ToneGenerator::ToneGenerator(audio_stream_type_t streamType, float volume, bool threadCanCallJava) {
 
     ALOGV("ToneGenerator constructor: streamType=%d, volume=%f", streamType, volume);
+#ifndef ANDROID_DEFAULT_CODE
+#ifdef VOLUME_NEWMAP
+    volume = AudioSystem::logToLinear ( volume);
+    volume = volume * 256.0/100.0;
+    volume = AudioSystem::linearToLog ( volume);
+#endif
+#endif
 
     mState = TONE_IDLE;
 
@@ -1203,8 +1210,15 @@ void ToneGenerator::audioCallback(int event, void* user, void *info) {
                 unsigned short lFrequency = lpToneDesc->segments[lpToneGen->mCurSegment].waveFreq[lFreqIdx];
 
                 while (lFrequency != 0) {
+#ifndef ANDROID_DEFAULT_CODE
+                    if(lpToneGen->mWaveGens.size() > 0)
+                    {
+#endif
                     WaveGenerator *lpWaveGen = lpToneGen->mWaveGens.valueFor(lFrequency);
                     lpWaveGen->getSamples(lpOut, lGenSmp, lWaveCmd);
+#ifndef ANDROID_DEFAULT_CODE
+                    }
+#endif
                     lFrequency = lpToneDesc->segments[lpToneGen->mCurSegment].waveFreq[++lFreqIdx];
                 }
                 ALOGV("ON->OFF, lGenSmp: %d, lReqSmp: %d", lGenSmp, lReqSmp);
@@ -1289,8 +1303,15 @@ void ToneGenerator::audioCallback(int event, void* user, void *info) {
             unsigned short lFrequency = lpToneDesc->segments[lpToneGen->mCurSegment].waveFreq[lFreqIdx];
 
             while (lFrequency != 0) {
+#ifndef ANDROID_DEFAULT_CODE
+                if(lpToneGen->mWaveGens.size() > 0)
+                {
+#endif
                 WaveGenerator *lpWaveGen = lpToneGen->mWaveGens.valueFor(lFrequency);
                 lpWaveGen->getSamples(lpOut, lGenSmp, lWaveCmd);
+#ifndef ANDROID_DEFAULT_CODE
+                }
+#endif
                 lFrequency = lpToneDesc->segments[lpToneGen->mCurSegment].waveFreq[++lFreqIdx];
             }
         }

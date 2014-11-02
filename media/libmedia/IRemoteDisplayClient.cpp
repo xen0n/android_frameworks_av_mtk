@@ -27,6 +27,9 @@ enum {
     ON_DISPLAY_CONNECTED = IBinder::FIRST_CALL_TRANSACTION,
     ON_DISPLAY_DISCONNECTED,
     ON_DISPLAY_ERROR,
+#ifndef ANDROID_DEFAULT_CODE
+    ON_DISPLAY_RTSPGENERIC_EVENT,
+#endif
 };
 
 class BpRemoteDisplayClient: public BpInterface<IRemoteDisplayClient>
@@ -64,6 +67,15 @@ public:
         data.writeInt32(error);
         remote()->transact(ON_DISPLAY_ERROR, data, &reply, IBinder::FLAG_ONEWAY);
     }
+#ifndef ANDROID_DEFAULT_CODE
+    void onDisplayGenericMsgEvent(uint32_t event){
+        Parcel data, reply;
+        data.writeInterfaceToken(IRemoteDisplayClient::getInterfaceDescriptor());
+        data.writeInt32(event);
+        remote()->transact(ON_DISPLAY_RTSPGENERIC_EVENT, data, &reply, IBinder::FLAG_ONEWAY);
+    }
+#endif
+
 };
 
 IMPLEMENT_META_INTERFACE(RemoteDisplayClient, "android.media.IRemoteDisplayClient");
@@ -96,6 +108,14 @@ status_t BnRemoteDisplayClient::onTransact(
             onDisplayError(error);
             return NO_ERROR;
         }
+#ifndef ANDROID_DEFAULT_CODE
+        case ON_DISPLAY_RTSPGENERIC_EVENT: {
+            CHECK_INTERFACE(IRemoteDisplayClient, data, reply);
+            uint32_t event = data.readInt32();
+            onDisplayGenericMsgEvent(event);
+            return NO_ERROR;
+        }
+#endif
         default:
             return BBinder::onTransact(code, data, reply, flags);
     }

@@ -36,10 +36,19 @@
 
 #define WAIT_PERIOD_MS                  10
 #define WAIT_STREAM_END_TIMEOUT_SEC     120
+#ifndef ANDROID_DEFAULT_CODE
+#include <cutils/xlog.h>
+#include <linux/rtpm_prio.h>
+#include <media/AudioTrackCenter.h>
+#endif
 
 
 namespace android {
 // ---------------------------------------------------------------------------
+
+#ifndef ANDROID_DEFAULT_CODE
+AudioTrackCenter gAudioTrackCenter;
+#endif
 
 // static
 status_t AudioTrack::getMinFrameCount(
@@ -169,6 +178,10 @@ AudioTrack::AudioTrack(
 
 AudioTrack::~AudioTrack()
 {
+#ifndef ANDROID_DEFAULT_CODE
+    SXLOGD("~audioTrack %p", this);
+    gAudioTrackCenter.removeTrack((void*)this);
+#endif
     if (mStatus == NO_ERROR) {
         // Make sure that callback function exits in the case where
         // it is looping on buffer full condition in obtainBuffer().
@@ -412,7 +425,14 @@ status_t AudioTrack::set(
 
     if (audio_is_linear_pcm(format)) {
         mFrameSize = channelCount * audio_bytes_per_sample(format);
+#ifdef MTK_24BIT_AUDIO_SUPPORT
+    if((format == AUDIO_FORMAT_PCM_8_24_BIT) || (format == AUDIO_FORMAT_PCM_32_BIT))
+        mFrameSizeAF = channelCount * audio_bytes_per_sample(format);
+    else
         mFrameSizeAF = channelCount * sizeof(int16_t);
+#else
+        mFrameSizeAF = channelCount * sizeof(int16_t);
+#endif
     } else {
         mFrameSize = sizeof(uint8_t);
         mFrameSizeAF = sizeof(uint8_t);
@@ -627,6 +647,9 @@ status_t AudioTrack::start()
             set_sched_policy(0, mPreviousSchedulingGroup);
         }
     }
+#ifndef ANDROID_DEFAULT_CODE
+	gAudioTrackCenter.setTrackActive((int32_t)mCblk, true);
+#endif
 
     return status;
 }
@@ -677,6 +700,10 @@ void AudioTrack::stop()
 #ifdef QCOM_DIRECTTRACK
     }
 #endif
+#ifndef ANDROID_DEFAULT_CODE
+    gAudioTrackCenter.setTrackActive((int32_t)mCblk, false);
+    SXLOGD("audiotrack %p stop done", this);
+#endif
 }
 
 bool AudioTrack::stopped() const
@@ -715,6 +742,10 @@ void AudioTrack::flush_l()
     mUpdatePeriod = 0;
     mRefreshRemaining = true;
 
+#ifndef ANDROID_DEFAULT_CODE
+	gAudioTrackCenter.reset((int32_t)mCblk);
+#endif
+
     mState = STATE_FLUSHED;
     if (isOffloaded()) {
         ALOGD("copl:AudioTrack::flush_l called");
@@ -726,6 +757,9 @@ void AudioTrack::flush_l()
 
 void AudioTrack::pause()
 {
+#ifndef ANDROID_DEFAULT_CODE
+    SXLOGD("pause %p", this);
+#endif
     AutoMutex lock(mLock);
     ALOGD_IF(isOffloaded(),"copl:AudioTrack::Pause called");
     if (mState == STATE_ACTIVE) {
@@ -740,6 +774,9 @@ void AudioTrack::pause()
         ALOGV("mDirectTrack pause");
         mDirectTrack->pause();
     } else {
+#endif
+#ifndef ANDROID_DEFAULT_CODE
+    gAudioTrackCenter.setTrackActive((int32_t)mCblk, false);
 #endif
     mProxy->interrupt();
     mAudioTrack->pause();
@@ -1120,6 +1157,13 @@ status_t AudioTrack::createTrack_l(
         return NO_INIT;
     }
 
+#ifndef ANDROID_DEFAULT_CODE
+	if((afFrameCount<=0) || (afSampleRate <= 0))
+	{
+		ALOGE("Get audioflinger parameter error afFrameCount-%d, afSampleRate-%d", afFrameCount, afSampleRate);
+		return NO_INIT;
+	}
+#endif
     // Client decides whether the track is TIMED (see below), but can only express a preference
     // for FAST.  Server will perform additional tests.
     if ((flags & AUDIO_OUTPUT_FLAG_FAST) && !(
@@ -1366,6 +1410,9 @@ status_t AudioTrack::createTrack_l(
 
     mDeathNotifier = new DeathNotifier(this);
     mAudioTrack->asBinder()->linkToDeath(mDeathNotifier, this);
+#ifndef ANDROID_DEFAULT_CODE
+	gAudioTrackCenter.addTrack((int32_t)mCblk, frameCount, sampleRate, (void*)this);
+#endif
 
     return NO_ERROR;
 }
@@ -2194,6 +2241,27 @@ bool AudioTrack::AudioTrackThread::threadLoop()
     }
 }
 
+#ifndef ANDROID_DEFAULT_CODE
+status_t AudioTrack::AudioTrackThread::readyToRun()
+{
+    int result = -1;
+    // if set prority false , force to set priority
+    if(result == -1){
+    struct sched_param sched_p;
+    sched_getparam(0, &sched_p);
+    sched_p.sched_priority = RTPM_PRIO_AUDIOTRACK_THREAD;
+        if(0 != sched_setscheduler(0, SCHED_RR, &sched_p)) {
+            SXLOGD("pid [%d] sched_setscheduler to default: %d", getpid(), errno);
+        }
+        else {
+            sched_p.sched_priority = RTPM_PRIO_AUDIOTRACK_THREAD;
+            sched_getparam(0, &sched_p);
+            SXLOGD("sched_setscheduler to rt, priority: %d", sched_p.sched_priority);
+        }
+    }
+    return NO_ERROR;
+}
+#endif
 void AudioTrack::AudioTrackThread::requestExit()
 {
     // must be in this order to avoid a race condition

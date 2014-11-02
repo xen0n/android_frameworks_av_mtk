@@ -382,8 +382,16 @@ int JetPlayer::loadFromFD(const int fd, const long long offset, const long long 
 //-------------------------------------------------------------------------------------------------
 int JetPlayer::closeFile()
 {
+#ifndef ANDROID_DEFAULT_CODE
+    ALOGW("!!!There is a PAUSE before actually CLOSE FILE to workaround CTS case!!!");
+    pause();
+    {
+#endif
     Mutex::Autolock lock(mMutex);
     return JET_CloseFile(mEasData);
+#ifndef ANDROID_DEFAULT_CODE
+    }
+#endif
 }
 
 
@@ -482,6 +490,10 @@ void JetPlayer::dumpJetStatus(S_JET_STATUS* pJetStatus)
                 pJetStatus->numQueuedSegments, pJetStatus->paused);
     else
         ALOGE(">> JET player status is NULL");
+
+    ALOGV(">> mPreviousJetStatus JET player status: mPreviousJetStatus.userID=%d mPreviousJetStatus.segmentRepeatCount=%d mPreviousJetStatus.numQueuedSegments=%d mPreviousJetStatus.paused=%d",
+        mPreviousJetStatus.currentUserID, mPreviousJetStatus.segmentRepeatCount,
+        mPreviousJetStatus.numQueuedSegments, mPreviousJetStatus.paused);
 }
 
 

@@ -389,6 +389,32 @@ status_t MediaRecorder::setVideoFrameRate(int frames_per_second)
     return ret;
 }
 
+#ifndef ANDROID_DEFAULT_CODE
+status_t MediaRecorder::setParametersExtra(const String8& params){
+    ALOGV("setParametersExtra(%s)", params.string());
+    if(mMediaRecorder == NULL) {
+        ALOGE("media recorder is not initialized yet");
+        return INVALID_OPERATION;
+    }
+
+    bool isInvalidState = (mCurrentState & MEDIA_RECORDER_ERROR);
+    if (isInvalidState) {
+        ALOGE("setParametersextra is called in an invalid state: %d", mCurrentState);
+        return INVALID_OPERATION;
+    }
+
+    status_t ret = mMediaRecorder->setParameters(params);
+    if (OK != ret) {
+        ALOGE("setParameters(%s) failed: %d", params.string(), ret);
+        // Do not change our current state to MEDIA_RECORDER_ERROR, failures
+        // of the only currently supported parameters, "max-duration" and
+        // "max-filesize" are _not_ fatal.
+    }
+
+    return ret;
+}
+#endif  //#ifndef ANDROID_DEFAULT_CODE
+
 status_t MediaRecorder::setParameters(const String8& params) {
     ALOGV("setParameters(%s)", params.string());
     if (mMediaRecorder == NULL) {
@@ -483,7 +509,12 @@ status_t MediaRecorder::start()
         ALOGE("media recorder is not initialized yet");
         return INVALID_OPERATION;
     }
+#ifndef ANDROID_DEFAULT_CODE
+    if (!(mCurrentState & (MEDIA_RECORDER_PREPARED | MEDIA_RECORDER_PAUSED))
+		&& !(mCurrentState & MEDIA_RECORDER_RECORDING)) {
+#else
     if (!(mCurrentState & (MEDIA_RECORDER_PREPARED | MEDIA_RECORDER_PAUSED))) {
+#endif
         ALOGE("start called in an invalid state: %d", mCurrentState);
         return INVALID_OPERATION;
     }

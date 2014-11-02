@@ -27,6 +27,9 @@
 #include <OMX_Core.h>
 #include <OMX_Video.h>
 
+#ifndef ANDROID_DEFAULT_CODE
+#include <binder/IMemory.h>
+#endif
 namespace android {
 
 class IMemory;
@@ -150,6 +153,26 @@ public:
             InternalOptionType type,
             const void *data,
             size_t size) = 0;
+#ifndef ANDROID_DEFAULT_CODE
+    virtual status_t useBuffer(
+            node_id node, OMX_U32 port_index, unsigned char* virAddr, size_t size,
+            buffer_id *buffer) = 0;
+
+    virtual status_t useBuffer(
+            node_id node, OMX_U32 port_index, unsigned char* virAddr, size_t size, OMX_U32 offset,
+            buffer_id *buffer) = 0;
+
+    virtual status_t registerBuffer(
+            node_id node, OMX_U32 port_index, const sp<IMemoryHeap> &heap) = 0;
+
+    virtual status_t registerBuffer2(
+            node_id node, OMX_U32 port_index, const sp<IMemoryHeap> &HeapBase) = 0;
+
+    // Morris Yang 20121203
+    virtual status_t useIonBuffer(
+            node_id node, OMX_U32 port_index,
+            unsigned char* virAddr, OMX_S32 fd, size_t size, buffer_id *buffer) = 0;
+#endif //ANDROID_DEFAULT_CODE
 };
 
 struct omx_message {

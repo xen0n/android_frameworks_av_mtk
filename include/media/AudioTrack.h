@@ -622,6 +622,9 @@ protected:
 
         friend class AudioTrack;
         virtual bool        threadLoop();
+#ifndef ANDROID_DEFAULT_CODE
+        virtual status_t    readyToRun();
+#endif
         AudioTrack&         mReceiver;
         virtual ~AudioTrackThread();
         Mutex               mMyLock;    // Thread::mLock is private

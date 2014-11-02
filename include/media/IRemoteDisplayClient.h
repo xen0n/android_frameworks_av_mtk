@@ -45,6 +45,14 @@ public:
         kDisplayErrorConnectionDropped = 2,
     };
 
+    ///M: add for rtsp generic message define RTSP
+    enum{
+        kDisplayRtspPlayEvent=0,
+        kDisplayRtspPauseEvent=1,
+        kDisplayRtspTeardownEvent=2,
+    };
+
+
     // Indicates that the remote display has been connected successfully.
     // Provides a surface texture that the client should use to stream buffers to
     // the remote display.
@@ -60,6 +68,10 @@ public:
     // Indicates that a connection could not be established to the remote display
     // or an unrecoverable error occurred and the connection was severed.
     virtual void onDisplayError(int32_t error) = 0; // one-way
+
+#ifndef ANDROID_DEFAULT_CODE
+    virtual void onDisplayGenericMsgEvent(uint32_t event) =0;
+#endif
 };
 
 

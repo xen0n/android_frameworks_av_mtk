@@ -37,6 +37,21 @@ namespace android {
 class IRemoteDisplay : public IInterface
 {
 public:
+
+    ///M: add for rtsp generic message @{
+    enum{
+        kGenericMessagePlay=1,
+        kGenericMessagePause=2,
+        kGenericMessageTeardown=3
+    };
+    enum{
+        kBitrateAuto =0,
+        kBitrateLevel0 =1,
+        kBitrateLevel1 =2,
+        kBitrateLevel2     =3
+    };
+    ///@}
+
     DECLARE_META_INTERFACE(RemoteDisplay);
 
     virtual status_t pause() = 0;
@@ -44,6 +59,14 @@ public:
 
     // Disconnects the remote display and stops listening for new connections.
     virtual status_t dispose() = 0;
+
+#ifndef ANDROID_DEFAULT_CODE
+    ///M: add for rtsp generic message@{
+    virtual status_t sendGenericMsg(int cmd)=0;
+    virtual status_t setBitrateControl(int level)=0;
+    virtual int      getWfdParam(int paramType)=0;
+    ///@}
+#endif
 };
 
 

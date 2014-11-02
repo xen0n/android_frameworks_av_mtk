@@ -25,6 +25,11 @@ enum {
     DISPOSE = IBinder::FIRST_CALL_TRANSACTION,
     PAUSE,
     RESUME,
+#ifndef ANDROID_DEFAULT_CODE
+    SENDGENERICMSG,
+    SETBITRATECONTROL,
+    GETWFDPARAM,
+#endif
 };
 
 class BpRemoteDisplay: public BpInterface<IRemoteDisplay>
@@ -56,6 +61,38 @@ public:
         remote()->transact(DISPOSE, data, &reply);
         return reply.readInt32();
     }
+
+    ///M: add for rtsp generic message@{
+#ifndef ANDROID_DEFAULT_CODE
+    status_t sendGenericMsg(int cmd)
+    {
+        Parcel data, reply;
+        data.writeInterfaceToken(IRemoteDisplay::getInterfaceDescriptor());
+        data.writeInt32(cmd );
+
+        remote()->transact(SENDGENERICMSG, data, &reply);
+        return reply.readInt32();
+    }
+    status_t setBitrateControl(int level)
+    {
+        Parcel data, reply;
+        data.writeInterfaceToken(IRemoteDisplay::getInterfaceDescriptor());
+        data.writeInt32(level);
+
+        remote()->transact(SETBITRATECONTROL, data, &reply);
+        return reply.readInt32();
+    }
+    int getWfdParam(int paramType)
+    {
+        Parcel data, reply;
+        data.writeInterfaceToken(IRemoteDisplay::getInterfaceDescriptor());
+        data.writeInt32(paramType);
+
+        remote()->transact(GETWFDPARAM, data, &reply);
+        return reply.readInt32();
+    }
+#endif
+    ///@}
 };
 
 IMPLEMENT_META_INTERFACE(RemoteDisplay, "android.media.IRemoteDisplay");
@@ -86,6 +123,28 @@ status_t BnRemoteDisplay::onTransact(
             return OK;
         }
 
+        ///M:add for rtsp generic message{@
+#ifndef ANDROID_DEFAULT_CODE
+        case SENDGENERICMSG:{
+            CHECK_INTERFACE(IRemoteDisplay, data, reply);
+            uint32_t cmd = data.readInt32();
+            reply->writeInt32(sendGenericMsg(cmd));
+            return NO_ERROR;
+        }
+        case SETBITRATECONTROL:{
+            CHECK_INTERFACE(IRemoteDisplay, data, reply);
+            uint32_t level = data.readInt32();
+            reply->writeInt32(setBitrateControl(level));
+            return NO_ERROR;
+        }
+        case GETWFDPARAM:{
+            CHECK_INTERFACE(IRemoteDisplay, data, reply);
+            uint32_t paramType = data.readInt32();
+            reply->writeInt32(getWfdParam(paramType));
+            return NO_ERROR;
+        }
+#endif
+        ///@}
         default:
             return BBinder::onTransact(code, data, reply, flags);
     }

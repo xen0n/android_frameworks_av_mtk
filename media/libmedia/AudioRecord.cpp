@@ -29,9 +29,18 @@
 
 #define WAIT_PERIOD_MS          10
 
+#ifndef ANDROID_DEFAULT_CODE
+#include <cutils/xlog.h>
+#endif
+
 namespace android {
 // ---------------------------------------------------------------------------
 
+#ifndef ANDROID_DEFAULT_CODE
+    static AudioEffect *mpAEC = NULL;
+    static AudioEffect *mpAGC = NULL;
+    static AudioEffect *mpNS = NULL;
+#endif
 // static
 status_t AudioRecord::getMinFrameCount(
         size_t* frameCount,
@@ -104,6 +113,116 @@ AudioRecord::AudioRecord(
             notificationFrames, false /*threadCanCallJava*/, sessionId, transferType);
 }
 
+#ifndef ANDROID_DEFAULT_CODE
+AudioRecord::AudioRecord(
+        audio_source_t inputSource,
+        String8 Params,
+        uint32_t sampleRate,
+        audio_format_t format,
+        audio_channel_mask_t channelMask,
+        int frameCount,
+        callback_t cbf,
+        void* user,
+        int notificationFrames,
+        int sessionId,
+        transfer_type transferType,
+        audio_input_flags_t flags)
+     : mStatus(NO_INIT), mSessionId(0),
+      mPreviousPriority(ANDROID_PRIORITY_NORMAL),
+      mPreviousSchedulingGroup(SP_DEFAULT),
+      mProxy(NULL)
+
+{
+
+    if (Params.find("HDREC_SET_VOICE_MODE") > -1 || Params.find("HDREC_SET_VIDEO_MODE") > -1
+        || Params.find("LRChannelSwitch") > -1)
+    {
+    const sp<IAudioFlinger>& audioFlinger = AudioSystem::get_audio_flinger();
+
+    ALOGD("audioFlinger->setParameters,%s+",Params.string());
+    status_t sResult = audioFlinger->setParameters(0, Params);
+        ALOGD("audioFlinger->setParameters:%s-,result=%d",Params.string(),sResult);
+    }
+    //if (sResult != NO_ERROR)
+    //{
+    //    SXLOGE("audioFlinger->setParameters,error:%s,%d",Params.string(),sResult);
+    //}
+    //else
+    //{
+    //    SXLOGD("audioFlinger->setParameters,%s-",Params.string());
+    //}
+    mStatus = set(inputSource, sampleRate, format, channelMask,
+            frameCount, cbf, user, notificationFrames,false,sessionId, transferType);
+
+    ssize_t effectpos = Params.find("PREPROCESS_EFFECT") ;
+    if (effectpos > -1)
+    {
+        const char *cparams = Params.string();
+        const char *key_start = cparams+effectpos;
+        const char *equal_pos = strchr(key_start, '=');
+        if (equal_pos == NULL)
+        {
+            ALOGE("Preprocess effect miss a value");
+        }
+        else
+        {
+            const char *value_start = equal_pos + 1;
+            const char *semicolon_pos = strchr(value_start, ';');
+            String8 value=String8("0");
+            value.setTo(value_start, semicolon_pos - value_start);
+            int ieffect = atoi(value.string());
+            char pUUID[37] = "";
+            //ref:Record.java:initAndStartMediaRecorder
+            int iAEC=1, iNS=iAEC<<1, iAGC = iAEC<<2;
+            //AudioEffect.java:AEC/NS/AGC
+            if ((ieffect & iAEC) > 0)
+            {
+                if (mpAEC == NULL)
+                {
+                    strcpy(pUUID, "7b491460-8d4d-11e0-bd61-0002a5d5c51b");
+                    ALOGD("create AEC effect+");
+                    mpAEC = new AudioEffect(pUUID,NULL,0,NULL,NULL,mSessionId,0);
+                    ALOGD("create AEC effect-");
+                }
+                ALOGD("AEC effect setEnable+");
+                mpAEC->setEnabled(true);
+                ALOGD("AEC effect setEnable-");
+            }
+            if ((ieffect & iNS) > 0)
+            {
+                if (mpNS == NULL)
+                {
+                    strcpy(pUUID, "58b4b260-8e06-11e0-aa8e-0002a5d5c51b");
+                    ALOGD("create NS effect+");
+                    mpNS = new AudioEffect(pUUID,NULL,0,NULL,NULL,mSessionId,0);
+                    ALOGD("create NS effect-");
+                }
+                mpNS->setEnabled(true);
+            }
+            if ((ieffect & iAGC) > 0)
+            {
+                if (mpAGC == NULL)
+                {
+                    strcpy(pUUID, "0a8abfe0-654c-11e0-ba26-0002a5d5c51b");
+                    mpAGC= new AudioEffect(pUUID,NULL,0,NULL,NULL,mSessionId,0);
+                }
+                mpAGC->setEnabled(true);
+            }
+        }
+    }
+}
+
+void AudioRecord::fn_ReleaseEffect(AudioEffect *&pEffect)
+{
+    if (pEffect != NULL)
+    {
+        pEffect->setEnabled(false);
+        delete pEffect;
+        pEffect = NULL;
+    }
+}
+#endif
+
 AudioRecord::~AudioRecord()
 {
     if (mStatus == NO_ERROR) {
@@ -122,6 +241,13 @@ AudioRecord::~AudioRecord()
             mAudioRecord.clear();
         }
         IPCThreadState::self()->flushCommands();
+
+#ifndef ANDROID_DEFAULT_CODE
+        fn_ReleaseEffect(mpAEC);
+        fn_ReleaseEffect(mpAGC);
+        fn_ReleaseEffect(mpNS);
+#endif
+
         AudioSystem::releaseAudioSessionId(mSessionId);
     }
 }
@@ -504,9 +630,25 @@ status_t AudioRecord::openRecord_l(size_t epoch)
             mNotificationFramesAct = mFrameCount/2;
         }
     }
+#ifndef ANDROID_DEFAULT_CODE
+    /*for audioflinger is only support 1 recordhandle. for giving more time to let last recordhandle release, we add retry 3 times.*/
+    int err_try=0;
 
+INPUT_LOOP:
+
+#endif
     audio_io_handle_t input = AudioSystem::getInput(mInputSource, mSampleRate, mFormat,
             mChannelMask, mSessionId);
+#ifndef ANDROID_DEFAULT_CODE
+    /*for audioflinger is only support 1 recordhandle. for giving more time to let last recordhandle release, we add retry 3 times.*/
+    if((input == 0)&& (err_try<3))
+    {
+        usleep(5000);
+        ALOGD("getInput(): fail retry %d", err_try);
+        err_try++;
+        goto INPUT_LOOP;
+    }
+#endif
     if (input == 0) {
         ALOGE("Could not get audio input for record source %d", mInputSource);
         return BAD_VALUE;

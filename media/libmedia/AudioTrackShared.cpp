@@ -19,11 +19,19 @@
 
 #include <private/media/AudioTrackShared.h>
 #include <utils/Log.h>
+#ifndef ANDROID_DEFAULT_CODE
+#include <cutils/xlog.h>
+#include <media/AudioTrackCenter.h>
+#endif
 extern "C" {
 #include "../private/bionic_futex.h"
 }
 
 namespace android {
+
+#ifndef ANDROID_DEFAULT_CODE
+extern AudioTrackCenter gAudioTrackCenter;
+#endif
 
 audio_track_cblk_t::audio_track_cblk_t()
     : mServer(0), frameCount_(0), mFutex(0), mMinimum(0),
@@ -628,6 +636,10 @@ void ServerProxy::releaseBuffer(Buffer* buffer)
     }
 
     mCblk->mServer += stepCount;
+
+#ifndef ANDROID_DEFAULT_CODE
+    gAudioTrackCenter.updateServer((int32_t)mCblk,  mCblk->mServer);
+#endif
 
     size_t half = mFrameCount / 2;
     if (half == 0) {

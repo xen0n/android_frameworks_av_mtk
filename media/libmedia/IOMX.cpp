@@ -54,6 +54,13 @@ enum {
     GET_GRAPHIC_BUFFER_USAGE,
     SET_INTERNAL_OPTION,
     UPDATE_GRAPHIC_BUFFER_IN_META,
+#ifndef ANDROID_DEFAULT_CODE
+    USE_BUFFER2,
+    USE_BUFFER3,
+    REGISTER_BUFFER,
+    REGISTER_BUFFER2,
+    USE_ION_BUFFER,
+#endif //ANDROID_DEFAULT_CODE
 };
 
 class BpOMX : public BpInterface<IOMX> {
@@ -352,6 +359,107 @@ public:
         return err;
     }
 
+#ifndef ANDROID_DEFAULT_CODE
+    virtual status_t useBuffer(
+            node_id node, OMX_U32 port_index, unsigned char* virAddr, size_t size,
+            buffer_id *buffer) {
+
+        Parcel data, reply;
+        data.writeInterfaceToken(IOMX::getInterfaceDescriptor());
+        data.writeIntPtr((intptr_t)node);
+        data.writeInt32(port_index);
+        data.writeInt32((OMX_U32)virAddr);
+        data.writeInt32(size);
+        remote()->transact(USE_BUFFER2, data, &reply);
+
+        status_t err = reply.readInt32();
+        if (err != OK) {
+            *buffer = 0;
+
+            return err;
+        }
+
+        *buffer = (void*)reply.readIntPtr();
+
+        return err;
+    }
+
+    virtual status_t useBuffer(
+            node_id node, OMX_U32 port_index, unsigned char* virAddr, size_t size, OMX_U32 offset,
+            buffer_id *buffer) {
+
+        Parcel data, reply;
+        data.writeInterfaceToken(IOMX::getInterfaceDescriptor());
+        data.writeIntPtr((intptr_t)node);
+        data.writeInt32(port_index);
+        data.writeInt32((OMX_U32)virAddr);
+        data.writeInt32(size);
+        data.writeInt32(offset);
+        remote()->transact(USE_BUFFER3, data, &reply);
+
+        status_t err = reply.readInt32();
+        if (err != OK) {
+            *buffer = 0;
+
+            return err;
+        }
+
+        *buffer = (void*)reply.readIntPtr();
+
+        return err;
+    }
+
+    virtual status_t registerBuffer(
+            node_id node, OMX_U32 port_index, const sp<IMemoryHeap> &heap) {
+        Parcel data, reply;
+        data.writeInterfaceToken(IOMX::getInterfaceDescriptor());
+        data.writeIntPtr((intptr_t)node);
+        data.writeInt32(port_index);
+        data.writeStrongBinder(heap->asBinder());
+        remote()->transact(REGISTER_BUFFER, data, &reply);
+
+        return reply.readInt32();
+    }
+
+    virtual status_t registerBuffer2(
+            node_id node, OMX_U32 port_index, const sp<IMemoryHeap> &HeapBase) {
+        Parcel data, reply;
+        data.writeInterfaceToken(IOMX::getInterfaceDescriptor());
+        data.writeIntPtr((intptr_t)node);
+        data.writeInt32(port_index);
+        data.writeStrongBinder(HeapBase->asBinder());
+        remote()->transact(REGISTER_BUFFER2, data, &reply);
+
+        return reply.readInt32();
+    }
+
+    // Morris Yang 201201203
+    virtual status_t useIonBuffer(
+            node_id node, OMX_U32 port_index,
+            unsigned char* virAddr, OMX_S32 fd, size_t size, buffer_id *buffer) {
+        Parcel data, reply;
+        data.writeInterfaceToken(IOMX::getInterfaceDescriptor());
+        data.writeIntPtr((intptr_t)node);
+        data.writeInt32(port_index);
+        data.writeInt32((OMX_U32)virAddr);
+        data.writeFileDescriptor((OMX_S32)fd);
+        data.writeInt32(size);
+        ALOGV("useIonBuffer writeFileDescriptor %x, %x, %x, %x, %x", node, port_index, virAddr, fd, size);
+        remote()->transact(USE_ION_BUFFER, data, &reply);
+
+        status_t err = reply.readInt32();
+        if (err != OK) {
+            *buffer = 0;
+
+            return err;
+        }
+
+        *buffer = (void*)reply.readIntPtr();
+
+        return err;
+    }
+
+#endif
     virtual status_t prepareForAdaptivePlayback(
             node_id node, OMX_U32 port_index, OMX_BOOL enable,
             OMX_U32 max_width, OMX_U32 max_height) {
@@ -787,6 +895,99 @@ status_t BnOMX::onTransact(
             return NO_ERROR;
         }
 
+#ifndef ANDROID_DEFAULT_CODE
+        case USE_BUFFER2:
+        {
+            CHECK_OMX_INTERFACE(IOMX, data, reply);
+
+            node_id node = (void*)data.readIntPtr();
+            OMX_U32 port_index = data.readInt32();
+            unsigned char* virAddr = (unsigned char*)data.readInt32();
+            size_t size = data.readInt32();
+            buffer_id buffer;
+            status_t err = useBuffer(node, port_index, virAddr, size, &buffer);
+            reply->writeInt32(err);
+
+            if (err == OK) {
+                reply->writeIntPtr((intptr_t)buffer);
+            }
+
+            return NO_ERROR;
+        }
+
+        case USE_BUFFER3:
+        {
+            CHECK_OMX_INTERFACE(IOMX, data, reply);
+
+            node_id node = (void*)data.readIntPtr();
+            OMX_U32 port_index = data.readInt32();
+            unsigned char* virAddr = (unsigned char*)data.readInt32();
+            size_t size = data.readInt32();
+            OMX_U32 offset = data.readInt32();
+            buffer_id buffer;
+            status_t err = useBuffer(node, port_index, virAddr, size, offset, &buffer);
+            reply->writeInt32(err);
+
+            if (err == OK) {
+                reply->writeIntPtr((intptr_t)buffer);
+            }
+
+            return NO_ERROR;
+        }
+
+        case REGISTER_BUFFER:
+        {
+            CHECK_OMX_INTERFACE(IOMX, data, reply);
+
+            node_id node = (void*)data.readIntPtr();
+            OMX_U32 port_index = data.readInt32();
+            sp<IMemoryHeap> heap =
+                interface_cast<IMemoryHeap>(data.readStrongBinder());
+
+            status_t err = registerBuffer(node, port_index, heap);
+            reply->writeInt32(err);
+
+            return NO_ERROR;
+        }
+
+    case REGISTER_BUFFER2:
+        {
+            CHECK_OMX_INTERFACE(IOMX, data, reply);
+
+            node_id node = (void*)data.readIntPtr();
+            OMX_U32 port_index = data.readInt32();
+            sp<IMemoryHeap> HeapBase =
+                interface_cast<IMemoryHeap>(data.readStrongBinder());
+
+            status_t err = registerBuffer2(node, port_index, HeapBase);
+            reply->writeInt32(err);
+
+            return NO_ERROR;
+        }
+
+        // Morris Yang 20121203
+        case USE_ION_BUFFER:
+        {
+            CHECK_OMX_INTERFACE(IOMX, data, reply);
+            node_id node = (void*)data.readIntPtr();
+            OMX_U32 port_index = data.readInt32();
+            unsigned char* virAddr = (unsigned char*)data.readInt32();
+            OMX_S32 fd = dup(data.readFileDescriptor());
+            size_t size = data.readInt32();
+            ALOGV("useIonBuffer readFileDescriptor %x, %x, %x, %x, %x", node, port_index, virAddr, fd, size);
+            buffer_id buffer;
+            status_t err = useIonBuffer(
+                    node, port_index, virAddr, fd, size, &buffer);
+            reply->writeInt32(err);
+
+            if (err == OK) {
+                reply->writeIntPtr((intptr_t)buffer);
+            }
+
+            return NO_ERROR;
+        }
+
+#endif
         case PREPARE_FOR_ADAPTIVE_PLAYBACK:
         {
             CHECK_OMX_INTERFACE(IOMX, data, reply);
@@ -927,6 +1128,15 @@ public:
         data.writeInterfaceToken(IOMXObserver::getInterfaceDescriptor());
         data.write(&msg, sizeof(msg));
 
+#ifndef ANDROID_DEFAULT_CODE
+        //for ACodec color convert
+        if( (msg.type == omx_message::FILL_BUFFER_DONE)&&((OMX_ACODEC_COLOR_CONVERT & msg.u.extended_buffer_data.flags) == OMX_ACODEC_COLOR_CONVERT) )
+        {
+            ALOGV("onMessage on OMX_ACODEC_COLOR_CONVERT %p", msg.u.extended_buffer_data.platform_private);
+            data.write(msg.u.extended_buffer_data.platform_private, sizeof(OMX_MTK_PLATFORM_PRIVATE));
+        }
+#endif //ANDROID_DEFAULT_CODE
+
         remote()->transact(OBSERVER_ON_MSG, data, &reply, IBinder::FLAG_ONEWAY);
     }
 };
@@ -942,6 +1152,17 @@ status_t BnOMXObserver::onTransact(
 
             omx_message msg;
             data.read(&msg, sizeof(msg));
+
+#ifndef ANDROID_DEFAULT_CODE
+            OMX_MTK_PLATFORM_PRIVATE mPrivatePtr;
+            //for ACodec color convert
+            if( (msg.type == omx_message::FILL_BUFFER_DONE)&&((OMX_ACODEC_COLOR_CONVERT & msg.u.extended_buffer_data.flags) == OMX_ACODEC_COLOR_CONVERT) )
+            {
+                ALOGV("onTransact msg %p, on OMX_ACODEC_COLOR_CONVERT %p", &msg, &mPrivatePtr);
+                data.read(&mPrivatePtr, sizeof(OMX_MTK_PLATFORM_PRIVATE));
+                msg.u.extended_buffer_data.platform_private = (OMX_PTR)&mPrivatePtr;
+            }
+#endif //ANDROID_DEFAULT_CODE
 
             // XXX Could use readInplace maybe?
             onMessage(msg);

@@ -106,6 +106,12 @@ public:
     // Init the audio decoder and the video decoder
     // @return OK if the video player was resumed successfully
     virtual status_t        resume() = 0;
+
+#ifndef ANDROID_DEFAULT_CODE
+#ifdef MTK_CMMB_ENABLE
+    virtual status_t        capture(const char* uri) = 0;
+#endif
+#endif
 };
 
 // ----------------------------------------------------------------------------

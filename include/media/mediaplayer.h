@@ -53,6 +53,11 @@ enum media_event_type {
 #ifdef QCOM_HARDWARE
     MEDIA_QOE               = 300,
 #endif
+#ifndef ANDROID_DEFAULT_CODE
+    MEDIA_DURATION_UPDATE   = 300,
+    MEDIA_PAUSE_COMPLETE    = 600, // mtk80902
+    MEDIA_PLAY_COMPLETE    = 601, // mtk80902
+#endif
 };
 
 // Generic error codes for the media player framework.  Errors are fatal, the
@@ -81,7 +86,33 @@ enum media_error_type {
     MEDIA_ERROR_SERVER_DIED = 100,
     // 2xx
     MEDIA_ERROR_NOT_VALID_FOR_PROGRESSIVE_PLAYBACK = 200,
+#ifndef ANDROID_DEFAULT_CODE
+    MEDIA_ERROR_BAD_FILE = 260,
+    MEDIA_ERROR_CANNOT_CONNECT_TO_SERVER = 261,
+    MEDIA_ERROR_TYPE_NOT_SUPPORTED = 262,
+    MEDIA_ERROR_DRM_NOT_SUPPORTED = 263,
+    MEDIA_ERROR_INVALID_CONNECTION = 264,
+#endif
     // 3xx
+#ifndef ANDROID_DEFAULT_CODE
+    MEDIA_ERROR_SD_CARD_BAD_REMOVAL = 300,
+#endif
+
+#ifndef ANDROID_DEFAULT_CODE
+#ifdef MTK_CMMB_ENABLE
+    //4xx CMMB capture error
+    FILE_OPEN_ERROR = 400,
+
+    FILE_WRITE_ERROR = 401,
+
+    FILE_CLOSE_ERROR = 402,
+
+    SKIA_ERROR = 403,
+
+    COLOR_CONVERT_ERROR = 404,
+#endif
+#endif
+
 };
 
 
@@ -130,9 +161,28 @@ enum media_info_type {
     MEDIA_INFO_NOT_SEEKABLE = 801,
     // New media metadata is available.
     MEDIA_INFO_METADATA_UPDATE = 802,
+#ifndef ANDROID_DEFAULT_CODE
+// <--- Morris Yang PLAYER_CHECK_LIVE_STREAMING is completed.
+    MEDIA_INFO_CHECK_LIVE_STREAMING_COMPLETE = 803,
+// --->
+	// <--- sam sun for aac seek table gen
+	// The media is seekable.
+    MEDIA_INFO_SEEKABLE = 804,
+	MEDIA_INFO_HAS_UNSUPPORT_VIDEO = 860,
+	MEDIA_INFO_BUFFERING_DATA = 861,
+	MEDIA_INFO_HAS_UNSUPPORT_AUDIO = 862,
+#endif
 
     //9xx
     MEDIA_INFO_TIMED_TEXT_ERROR = 900,
+
+#ifndef ANDROID_DEFAULT_CODE
+#ifdef MTK_CMMB_ENABLE
+    MEDIA_INFO_CMMB_CAPTURE_OK = 901,
+    MEDIA_INFO_CMMB_START_RENDER = 902,
+#endif
+#endif
+
 };
 
 
@@ -164,6 +214,21 @@ enum media_parameter_keys {
     // Playback rate expressed in permille (1000 is normal speed), saved as int32_t, with negative
     // values used for rewinding or reverse playback.
     KEY_PARAMETER_PLAYBACK_RATE_PERMILLE = 1300,                // set only
+#ifndef ANDROID_DEFAULT_CODE
+	KEY_PARAMETER_AUDIO_SEEKTABLE = 1500,                       //set seektable only
+	KEY_PARAMETER_MATV_AUDIO_PATH = 1600,
+#ifdef MTK_CLEARMOTION_SUPPORT
+	KEY_PARAMETER_CLEARMOTION_DISABLE = 1700,                // clear motion enable
+#endif
+#ifdef MTK_SLOW_MOTION_VIDEO_SUPPORT
+	KEY_PARAMETER_SlowMotion_Speed_value = 1800,
+#endif
+#endif
+
+#ifndef ANDROID_DEFAULT_CODE
+	KEY_PARAMETER_DRM_CLIENT_PROC = 2000,                       // OMA DRM v1.0 implementation
+#endif
+
 };
 
 // Keep INVOKE_ID_* in sync with MediaPlayer.java.
@@ -247,6 +312,11 @@ public:
             status_t        setNextMediaPlayer(const sp<MediaPlayer>& player);
             status_t        suspend();
             status_t        resume();
+#ifndef ANDROID_DEFAULT_CODE
+#ifdef MTK_CMMB_ENABLE
+            status_t        capture(const char* uri);  //CMMB
+#endif
+#endif
 
             status_t updateProxyConfig(
                     const char *host, int32_t port, const char *exclusionList);

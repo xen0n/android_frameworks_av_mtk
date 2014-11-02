@@ -72,6 +72,12 @@ enum output_format {
     OUTPUT_FORMAT_THREE_GPP2 = 10, /*3GPP2*/
     OUTPUT_FORMAT_WAVE = 11, /*WAVE*/
 #endif
+#ifndef ANDROID_DEFAULT_CODE
+    //MTK80721 2011-01-21 HP's definition is conflicted with OUTPUT_FORMAT_MPEG2TS in stagefrightrecorder.cpp
+    OUTPUT_FORMAT_WAV = 9,
+    //MTK80721 2011-08-08 Ogg
+    OUTPUT_FORMAT_OGG = 10,
+#endif
     OUTPUT_FORMAT_LIST_END // must be last - used to validate format type
 };
 
@@ -86,6 +92,17 @@ enum audio_encoder {
     AUDIO_ENCODER_EVRC = 6,
     AUDIO_ENCODER_QCELP = 7,
     AUDIO_ENCODER_LPCM = 8,
+#endif
+
+#ifndef ANDROID_DEFAULT_CODE
+    AUDIO_ENCODER_PCM = 6,			//by HP Cheng
+#ifdef HAVE_ADPCMENCODE_FEATURE
+    AUDIO_ENCODER_MS_ADPCM = 7, 		//by HP Cheng
+    AUDIO_ENCODER_DVI_IMA_ADPCM = 71,
+#endif
+
+    //MTK80721 2011-08-08
+    AUDIO_ENCODER_VORBIS = 8,
 #endif
     AUDIO_ENCODER_LIST_END // must be the last - used to validate the audio encoder type
 };
@@ -202,6 +219,17 @@ enum media_recorder_info_type {
     MEDIA_RECORDER_TRACK_INFO_DATA_KBYTES          = 1009,
 
     MEDIA_RECORDER_TRACK_INFO_LIST_END             = 2000,
+
+#ifndef ANDROID_DEFAULT_CODE
+	MEDIA_RECORDER_INFO_RECORDING_SIZE = 895,
+    MEDIA_RECORDER_INFO_SESSIONID = 896,
+	MEDIA_RECORDER_INFO_FPS_ADJUSTED			   = 897,
+	MEDIA_RECORDER_INFO_BITRATE_ADJUSTED		   = 898,
+	MEDIA_RECORDER_INFO_WRITE_SLOW				   = 899,
+	MEDIA_RECORDER_INFO_START_TIMER				   = 1998,
+    MEDIA_RECORDER_INFO_CAMERA_RELEASE             = 1999,
+
+#endif
 };
 
 // ----------------------------------------------------------------------------
@@ -246,6 +274,10 @@ public:
     status_t    release();
     void        notify(int msg, int ext1, int ext2);
     sp<IGraphicBufferProducer>     querySurfaceMediaSourceFromMediaServer();
+
+#ifndef ANDROID_DEFAULT_CODE
+    status_t    setParametersExtra(const String8& params);
+#endif
 
 private:
     void                    doCleanUp();

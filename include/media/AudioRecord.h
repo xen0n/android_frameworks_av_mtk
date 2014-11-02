@@ -22,6 +22,10 @@
 #include <media/IAudioRecord.h>
 #include <utils/threads.h>
 
+#ifndef ANDROID_DEFAULT_CODE
+#include <media/AudioEffect.h>
+#endif
+
 namespace android {
 
 // ----------------------------------------------------------------------------
@@ -34,7 +38,9 @@ class AudioRecordClientProxy;
 class AudioRecord : public RefBase
 {
 public:
-
+#ifndef ANDROID_DEFAULT_CODE
+    static const int MATV_SAMPLE_RATE = 32000;
+#endif
     /* Events used by AudioRecord callback function (callback_t).
      * Keep in sync with frameworks/base/media/java/android/media/AudioRecord.java NATIVE_EVENT_*.
      */
@@ -47,6 +53,9 @@ public:
                                     // (See setPositionUpdatePeriod()).
         EVENT_NEW_IAUDIORECORD = 4, // IAudioRecord was re-created, either due to re-routing and
                                     // voluntary invalidation by mediaserver, or mediaserver crash.
+#ifndef ANDROID_DEFAULT_CODE
+	EVENT_WAIT_TIEMOUT = 0xffff,
+#endif
     };
 
     /* Client should declare Buffer on the stack and pass address to obtainBuffer()
@@ -158,6 +167,20 @@ public:
                                     int sessionId = 0,
                                     transfer_type transferType = TRANSFER_DEFAULT,
                                     audio_input_flags_t flags = AUDIO_INPUT_FLAG_NONE);
+#ifndef ANDROID_DEFAULT_CODE
+			AudioRecord(audio_source_t inputSource,
+				        String8 Params,
+                        uint32_t sampleRate = 0,
+                        audio_format_t format          = AUDIO_FORMAT_DEFAULT,
+                        audio_channel_mask_t channelMask = AUDIO_CHANNEL_IN_MONO,
+                        int frameCount      = 0,
+                        callback_t cbf = NULL,
+                        void* user = NULL,
+                        int notificationFrames = 0,
+                        int sessionId = 0,
+                        transfer_type transferType = TRANSFER_DEFAULT,
+                        audio_input_flags_t flags = AUDIO_INPUT_FLAG_NONE);
+#endif
 
     /* Terminates the AudioRecord and unregisters it from AudioFlinger.
      * Also destroys all resources associated with the AudioRecord.
@@ -214,7 +237,14 @@ public:
             size_t      frameSize() const;
             audio_source_t inputSource() const;
 #else
-            size_t      frameSize() const   { return mFrameSize; }
+            size_t      frameSize() const   {
+            #ifndef ANDROID_DEFAULT_CODE
+                if (mFormat == AUDIO_FORMAT_VM_FMT) {
+                    return channelCount()*sizeof(int16_t);
+                }
+            #endif
+            return mFrameSize;
+            }
             audio_source_t inputSource() const  { return mInputSource; }
 #endif
 
@@ -390,6 +420,10 @@ private:
     /* copying audio record objects is not allowed */
                         AudioRecord(const AudioRecord& other);
             AudioRecord& operator = (const AudioRecord& other);
+
+#ifndef ANDROID_DEFAULT_CODE
+    void fn_ReleaseEffect(AudioEffect *&pEffect);
+#endif
 
     /* a small internal class to handle the callback */
     class AudioRecordThread : public Thread

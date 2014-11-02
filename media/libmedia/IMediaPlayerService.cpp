@@ -49,6 +49,13 @@ enum {
     PULL_BATTERY_DATA,
     LISTEN_FOR_REMOTE_DISPLAY,
     UPDATE_PROXY_CONFIG,
+#ifndef ANDROID_DEFAULT_CODE
+    ENABLE_REMOTE_DISPLAY,
+    LISTEN_FOR_FAST_REMOTE_DISPLAY,
+    ENABLE_FAST_REMOTE_DISPLAY,
+    SEND_GENERIC_MSG,
+    SET_BITRATE_CONTROL
+#endif
 };
 
 class BpMediaPlayerService: public BpInterface<IMediaPlayerService>
@@ -144,6 +151,24 @@ public:
         return interface_cast<ICrypto>(reply.readStrongBinder());
     }
 
+#ifndef ANDROID_DEFAULT_CODE
+    virtual status_t enableRemoteDisplay(const char *iface) {
+        Parcel data, reply;
+        data.writeInterfaceToken(IMediaPlayerService::getInterfaceDescriptor());
+
+        if (iface != NULL) {
+            data.writeInt32(1);
+            data.writeCString(iface);
+        } else {
+            data.writeInt32(0);
+        }
+
+        remote()->transact(ENABLE_REMOTE_DISPLAY, data, &reply);
+        return reply.readInt32();
+    }
+#endif
+
+
     virtual sp<IDrm> makeDrm() {
         Parcel data, reply;
         data.writeInterfaceToken(IMediaPlayerService::getInterfaceDescriptor());
@@ -198,9 +223,64 @@ public:
         }
 
         remote()->transact(UPDATE_PROXY_CONFIG, data, &reply);
-
         return reply.readInt32();
     }
+
+#ifndef ANDROID_DEFAULT_CODE
+///M: MTK WFD added on feature @{
+    virtual sp<IRemoteDisplay> listenForRemoteDisplay(const sp<IRemoteDisplayClient>& client,
+            const String8& iface, const uint32_t wfdFlags)
+    {
+        Parcel data, reply;
+        data.writeInterfaceToken(IMediaPlayerService::getInterfaceDescriptor());
+        data.writeStrongBinder(client->asBinder());
+        data.writeString8(iface);
+        data.writeInt32(wfdFlags);
+
+        remote()->transact(LISTEN_FOR_FAST_REMOTE_DISPLAY, data, &reply);
+        return interface_cast<IRemoteDisplay>(reply.readStrongBinder());
+    }
+
+
+    virtual status_t enableRemoteDisplay(const char *iface, const uint32_t wfdFlags) {
+        Parcel data, reply;
+        data.writeInterfaceToken(IMediaPlayerService::getInterfaceDescriptor());
+
+
+        if (iface != NULL) {
+            data.writeInt32(1);
+            data.writeCString(iface);
+        }else{
+            data.writeInt32(0);
+        }
+        data.writeInt32(wfdFlags);
+
+        remote()->transact(ENABLE_FAST_REMOTE_DISPLAY, data, &reply);
+        return reply.readInt32();
+    }
+
+    virtual status_t sendGenericMsg(uint32_t cmd){
+        Parcel data, reply;
+        data.writeInterfaceToken(IMediaPlayerService::getInterfaceDescriptor());
+
+        data.writeInt32(cmd);
+
+        remote()->transact(SEND_GENERIC_MSG, data, &reply);
+        return reply.readInt32();
+    }
+
+    virtual status_t setBitrateControl(uint32_t level){
+        Parcel data, reply;
+        data.writeInterfaceToken(IMediaPlayerService::getInterfaceDescriptor());
+
+        data.writeInt32(level);
+
+        remote()->transact(SET_BITRATE_CONTROL, data, &reply);
+        return reply.readInt32();
+    }
+
+/// @}
+#endif
 };
 
 IMPLEMENT_META_INTERFACE(MediaPlayerService, "android.media.IMediaPlayerService");
@@ -334,6 +414,51 @@ status_t BnMediaPlayerService::onTransact(
 
             return OK;
         }
+#ifndef ANDROID_DEFAULT_CODE
+        case ENABLE_REMOTE_DISPLAY: {
+            CHECK_INTERFACE(IMediaPlayerService, data, reply);
+            const char *iface = NULL;
+            if (data.readInt32()) {
+                iface = data.readCString();
+            }
+            reply->writeInt32(enableRemoteDisplay(iface));
+            return NO_ERROR;
+        } break;
+        case LISTEN_FOR_FAST_REMOTE_DISPLAY: {
+            CHECK_INTERFACE(IMediaPlayerService, data, reply);
+            sp<IRemoteDisplayClient> client(
+                    interface_cast<IRemoteDisplayClient>(data.readStrongBinder()));
+            String8 iface(data.readString8());
+            const uint32_t wfdFlags = data.readInt32();
+            sp<IRemoteDisplay> display(listenForRemoteDisplay(client, iface, wfdFlags));
+            reply->writeStrongBinder(display->asBinder());
+            return NO_ERROR;
+        } break;
+        case ENABLE_FAST_REMOTE_DISPLAY: {
+            CHECK_INTERFACE(IMediaPlayerService, data, reply);
+            const char *iface = NULL;
+
+            if (data.readInt32()) {
+                iface = data.readCString();
+            }
+            const uint32_t wfdFlags = data.readInt32();
+
+            reply->writeInt32(enableRemoteDisplay(iface, wfdFlags));
+            return NO_ERROR;
+        } break;
+        case SEND_GENERIC_MSG: {
+            CHECK_INTERFACE(IMediaPlayerService, data, reply);
+            const uint32_t cmdId = data.readInt32();
+            reply->writeInt32(sendGenericMsg(cmdId));
+            return NO_ERROR;
+        } break;
+        case SET_BITRATE_CONTROL: {
+            CHECK_INTERFACE(IMediaPlayerService, data, reply);
+            const uint32_t level = data.readInt32();
+            reply->writeInt32(setBitrateControl(level));
+            return NO_ERROR;
+        } break;
+#endif
         default:
             return BBinder::onTransact(code, data, reply, flags);
     }
