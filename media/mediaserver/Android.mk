@@ -45,6 +45,21 @@ ifeq ($(strip $(AUDIO_FEATURE_ENABLED_LISTEN)),true)
   LOCAL_CFLAGS += -DAUDIO_LISTEN_ENABLED
 endif
 
+ifeq ($(strip $(BOARD_USES_MTK_AUDIO)),true)
+LOCAL_C_INCLUDES += \
+        hardware/mediatek/common/audio/include \
+        frameworks-ext/av/include/media \
+        frameworks-ext/av/services/audioflinger \
+        mediatek-min/external/audiodcremoveflt
+endif
+
+ifeq ($(strip $(MTK_VIDEO_HEVC_SUPPORT)), yes)
+   LOCAL_CFLAGS += -DMTK_VIDEO_HEVC_SUPPORT
+   LOCAL_SHARED_LIBRARIES += \
+       libmemorydumper \
+       libdl
+endif
+
 LOCAL_MODULE:= mediaserver
 
 include $(BUILD_EXECUTABLE)
