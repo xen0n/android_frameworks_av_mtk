@@ -124,6 +124,15 @@ LOCAL_C_INCLUDES := \
     $(call include-path-for, audio-effects) \
     $(call include-path-for, audio-utils)
 
+
+ifeq ($(MTK_HARDWARE),true)
+LOCAL_SRC_FILES += \
+    mtkaudio_stubs.cpp
+
+# StrongPointer.h
+LOCAL_C_INCLUDES += $(TOP)/frameworks/rs/server
+endif
+
 include $(BUILD_SHARED_LIBRARY)
 
 include $(CLEAR_VARS)
