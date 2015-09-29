@@ -143,6 +143,12 @@ ifeq ($(TARGET_BOARD_PLATFORM),omap4)
 LOCAL_CFLAGS += -DBOARD_CANT_REALLOCATE_OMX_BUFFERS
 endif
 
+ifeq ($(BOARD_HAS_MTK_HARDWARE),true)
+ifeq ($(BOARD_USES_LEGACY_MTK_AV_BLOB),true)
+LOCAL_CFLAGS += -DUSE_LEGACY_MTK_AV_BLOB
+endif
+endif
+
 #QTI FLAC Decoder
 ifeq ($(call is-vendor-board-platform,QCOM),true)
 LOCAL_C_INCLUDES += $(TARGET_OUT_HEADERS)/mm-audio
