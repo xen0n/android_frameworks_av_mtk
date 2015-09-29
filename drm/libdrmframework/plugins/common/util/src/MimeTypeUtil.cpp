@@ -52,18 +52,36 @@ struct MimeTypeList{
 
 
 // Known mimetypes by android
+#ifdef QCOM_HARDWARE
 static const char mime_type_audio_mpeg[]  = "audio/qc-mpeg";
+#else
+static const char mime_type_audio_mpeg[]  = "audio/mpeg";
+#endif
 static const char mime_type_audio_3gpp[]  = "audio/3gpp";
+#ifdef QCOM_HARDWARE
 static const char mime_type_audio_amr[]   = "audio/qc-amr";
 static const char mime_type_audio_amr_wb[]   = "audio/qc-amr-wb";
+#else
+static const char mime_type_audio_amr[]   = "audio/amr";
+static const char mime_type_audio_amr_wb[]   = "audio/amr-wb";
+#endif
 static const char mime_type_audio_aac[]   = "audio/mp4a-latm";
+#ifdef QCOM_HARDWARE
 static const char mime_type_audio_wav[]   = "audio/qc-wav";
+#else
+static const char mime_type_audio_wav[]   = "audio/wav";
+#endif
 static const char mime_type_audio_wma[]   = "audio/x-ms-wma";
 
 static const char mime_type_video_mpeg4[] = "video/mpeg4";
 static const char mime_type_video_3gpp[]  = "video/3gpp";
+#ifdef QCOM_HARDWARE
 static const char mime_type_video_ogg[]  = "video/qc-ogg";
 static const char mime_type_video_flv[]  = "video/qc-flv";
+#else
+static const char mime_type_video_ogg[]  = "video/ogg";
+static const char mime_type_video_flv[]  = "video/flv";
+#endif
 static const char mime_type_video_3g2[]  = "video/3g2";
 static const char mime_type_video_wmv[]  = "video/x-ms-wmv";
 
