@@ -149,7 +149,7 @@ private:
     Vector<ActiveBuffer> mActiveBuffers;
     // for buffer ptr to buffer id translation
     // but don't enable for use with MTK Lollipop- blob
-#ifndef USE_LEGACY_MTK_AV_BLOB
+#if !defined(USE_LEGACY_MTK_AV_BLOB) || defined(__LP64__)
     Mutex mBufferIDLock;
     uint32_t mBufferIDCount;
     KeyedVector<OMX::buffer_id, OMX_BUFFERHEADERTYPE *> mBufferIDToBufferHeader;

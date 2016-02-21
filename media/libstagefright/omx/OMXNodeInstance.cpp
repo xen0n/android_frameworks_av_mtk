@@ -170,7 +170,7 @@ OMXNodeInstance::OMXNodeInstance(
       mHandle(NULL),
       mObserver(observer),
       mDying(false)
-#ifdef __LP64__
+#if !defined(USE_LEGACY_MTK_AV_BLOB) || defined(__LP64__)
       , mBufferIDCount(0)
 #endif
 {
@@ -1363,7 +1363,7 @@ void OMXNodeInstance::freeActiveBuffers() {
     }
 }
 
-#ifndef USE_LEGACY_MTK_AV_BLOB
+#if !defined(USE_LEGACY_MTK_AV_BLOB) || defined(__LP64__)
 
 OMX::buffer_id OMXNodeInstance::makeBufferID(OMX_BUFFERHEADERTYPE *bufferHeader) {
     if (bufferHeader == NULL) {
