@@ -701,7 +701,14 @@ status_t CameraSource::start(MetaData *meta) {
 
     if (meta) {
         int64_t startTimeUs;
-        if (meta->findInt64(kKeyTime, &startTimeUs)) {
+
+        auto key = kKeyTime;
+        if (property_get_bool("persist.camera.HAL3.enabled", true) &&
+             !property_get_bool("media.camera.ts.monotonic", true)) {
+            key = kKeyTimeBoot;
+        }
+
+        if (meta->findInt64(key, &startTimeUs)) {
             mStartTimeUs = startTimeUs;
         }
 

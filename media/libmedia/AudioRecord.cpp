@@ -67,7 +67,7 @@ status_t AudioRecord::getMinFrameCount(
 // ---------------------------------------------------------------------------
 
 AudioRecord::AudioRecord(const String16 &opPackageName)
-    : mStatus(NO_INIT), mOpPackageName(opPackageName), mSessionId(AUDIO_SESSION_ALLOCATE),
+    : mActive(false), mStatus(NO_INIT), mOpPackageName(opPackageName), mSessionId(AUDIO_SESSION_ALLOCATE),
       mPreviousPriority(ANDROID_PRIORITY_NORMAL), mPreviousSchedulingGroup(SP_DEFAULT),
       mSelectedDeviceId(AUDIO_PORT_HANDLE_NONE)
 {
@@ -89,7 +89,8 @@ AudioRecord::AudioRecord(
         int uid,
         pid_t pid,
         const audio_attributes_t* pAttributes)
-    : mStatus(NO_INIT),
+    : mActive(false),
+      mStatus(NO_INIT),
       mOpPackageName(opPackageName),
       mSessionId(AUDIO_SESSION_ALLOCATE),
       mPreviousPriority(ANDROID_PRIORITY_NORMAL),
@@ -273,7 +274,6 @@ status_t AudioRecord::set(
     }
 
     mStatus = NO_ERROR;
-    mActive = false;
     mUserData = user;
     // TODO: add audio hardware input latency here
     if (mTransfer == TRANSFER_CALLBACK ||
@@ -299,7 +299,7 @@ status_t AudioRecord::set(
 status_t AudioRecord::start(AudioSystem::sync_event_t event, int triggerSession)
 {
     ALOGV("start, sync event %d trigger session %d", event, triggerSession);
-    SEEMPLOG_RECORD(89,"");
+    SEEMPLOG_RECORD(71,"");
 
     AutoMutex lock(mLock);
     if (mActive) {
@@ -347,7 +347,6 @@ status_t AudioRecord::start(AudioSystem::sync_event_t event, int triggerSession)
 
 void AudioRecord::stop()
 {
-    SEEMPLOG_RECORD(90,"");
     AutoMutex lock(mLock);
     if (!mActive) {
         return;

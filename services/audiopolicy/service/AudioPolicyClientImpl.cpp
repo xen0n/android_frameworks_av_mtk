@@ -220,9 +220,9 @@ void AudioPolicyService::AudioPolicyClient::onDynamicPolicyMixStateUpdate(
 }
 
 void AudioPolicyService::AudioPolicyClient::onOutputSessionEffectsUpdate(
-        audio_stream_type_t stream, audio_unique_id_t sessionId, bool added)
+        sp<AudioSessionInfo>& info, bool added)
 {
-    mAudioPolicyService->onOutputSessionEffectsUpdate(stream, sessionId, added);
+    mAudioPolicyService->onOutputSessionEffectsUpdate(info, added);
 }
 
 audio_unique_id_t AudioPolicyService::AudioPolicyClient::newAudioUniqueId()

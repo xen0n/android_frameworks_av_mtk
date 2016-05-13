@@ -21,6 +21,7 @@
 #include <utils/RefBase.h>
 #include <binder/IInterface.h>
 #include <system/audio.h>
+#include <media/AudioSession.h>
 
 namespace android {
 
@@ -38,9 +39,7 @@ public:
     // Notifies a change in the mixing state of a specific mix in a dynamic audio policy
     virtual void onDynamicPolicyMixStateUpdate(String8 regId, int32_t state) = 0;
     // Notifies when a default effect set is attached to a session/stream
-    virtual void onOutputSessionEffectsUpdate(audio_stream_type_t stream,
-                                              audio_unique_id_t sessionId,
-                                              bool added) = 0;
+    virtual void onOutputSessionEffectsUpdate(sp<AudioSessionInfo>& info, bool added) = 0;
 };
 
 

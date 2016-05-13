@@ -37,7 +37,7 @@ sp<IAudioFlinger> AudioSystem::gAudioFlinger;
 sp<AudioSystem::AudioFlingerClient> AudioSystem::gAudioFlingerClient;
 audio_error_callback AudioSystem::gAudioErrorCallback = NULL;
 dynamic_policy_callback AudioSystem::gDynPolicyCallback = NULL;
-effect_session_callback AudioSystem::gEffectSessionCallback = NULL;
+audio_session_callback AudioSystem::gAudioSessionCallback = NULL;
 
 // establish binder interface to AudioFlinger service
 const sp<IAudioFlinger> AudioSystem::get_audio_flinger()
@@ -652,19 +652,15 @@ status_t AudioSystem::AudioFlingerClient::removeAudioDeviceCallback(
     gDynPolicyCallback = cb;
 }
 
-/*static*/ status_t AudioSystem::setEffectSessionCallback(effect_session_callback cb)
+/*static*/ status_t AudioSystem::setAudioSessionCallback(audio_session_callback cb)
 {
     const sp<IAudioPolicyService>& aps = AudioSystem::get_audio_policy_service();
     if (aps == 0) return PERMISSION_DENIED;
 
     Mutex::Autolock _l(gLock);
-    gEffectSessionCallback = cb;
+    gAudioSessionCallback = cb;
 
-    status_t status = aps->setEffectSessionCallbacksEnabled(cb != NULL);
-    if (status != OK) {
-        gEffectSessionCallback = NULL;
-    }
-    return status;
+    return NO_ERROR;
 }
 
 // client singleton for AudioPolicyService binder interface
@@ -1238,18 +1234,29 @@ void AudioSystem::AudioPolicyServiceClient::onDynamicPolicyMixStateUpdate(
     }
 }
 
-void AudioSystem::AudioPolicyServiceClient::onOutputSessionEffectsUpdate(
-        audio_stream_type_t stream, audio_unique_id_t sessionId, bool added)
+// ---------------------------------------------------------------------------
+
+status_t AudioSystem::listAudioSessions(audio_stream_type_t stream,
+                                        Vector< sp<AudioSessionInfo>> &sessions)
 {
-    ALOGV("AudioPolicyServiceClient::onOutputSessionEffectsUpdate(%d, %d, %d)", stream, sessionId, added);
-    effect_session_callback cb = NULL;
+    const sp<IAudioPolicyService>& aps = AudioSystem::get_audio_policy_service();
+    if (aps == 0) return PERMISSION_DENIED;
+    return aps->listAudioSessions(stream, sessions);
+}
+
+void AudioSystem::AudioPolicyServiceClient::onOutputSessionEffectsUpdate(
+        sp<AudioSessionInfo>& info, bool added)
+{
+    ALOGV("AudioPolicyServiceClient::onOutputSessionEffectsUpdate(%d, %d, %d)",
+            info->mStream, info->mSessionId, added);
+    audio_session_callback cb = NULL;
     {
         Mutex::Autolock _l(AudioSystem::gLock);
-        cb = gEffectSessionCallback;
+        cb = gAudioSessionCallback;
     }
 
     if (cb != NULL) {
-        cb(AUDIO_OUTPUT_SESSION_EFFECTS_UPDATE, stream, sessionId, added);
+        cb(AUDIO_OUTPUT_SESSION_EFFECTS_UPDATE, info, added);
     }
 }
 

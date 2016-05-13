@@ -23,6 +23,7 @@
 #include <binder/Parcel.h>
 #include <utils/String8.h>
 #include <utils/Vector.h>
+#include <media/AudioSession.h>
 
 namespace android {
 
