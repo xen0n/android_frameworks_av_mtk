@@ -19,6 +19,7 @@
 #include <inttypes.h>
 
 #include <gui/BufferQueue.h>
+#include <gui/BufferItem.h>
 #include <gui/IGraphicBufferConsumer.h>
 #include <gui/IGraphicBufferProducer.h>
 
@@ -625,7 +626,7 @@ void MediaSync::onFrameAvailableFromInput() {
     }
 
     // Acquire and detach the buffer from the input.
-    BufferItem bufferItem;
+    BufferQueue::BufferItem bufferItem;
     status_t status = mInput->acquireBuffer(&bufferItem, 0 /* presentWhen */);
     if (status != NO_ERROR) {
         ALOGE("acquiring buffer from input failed (%d)", status);

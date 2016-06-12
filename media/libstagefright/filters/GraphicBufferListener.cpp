@@ -86,7 +86,7 @@ void GraphicBufferListener::onSidebandStreamChanged() {
 }
 
 BufferItem GraphicBufferListener::getBufferItem() {
-    BufferItem item;
+    BufferQueue::BufferItem item;
 
     {
         Mutex::Autolock autoLock(mMutex);

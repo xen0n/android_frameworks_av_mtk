@@ -136,12 +136,12 @@ class RingBufferConsumer : public ConsumerBase,
             return mBufferItem.mBuf == BufferQueue::INVALID_BUFFER_SLOT;
         }
 
-        BufferItem& getBufferItem() { return mBufferItem; }
-        const BufferItem& getBufferItem() const { return mBufferItem; }
+        BufferQueue::BufferItem& getBufferItem() { return mBufferItem; }
+        const BufferQueue::BufferItem& getBufferItem() const { return mBufferItem; }
 
       private:
         wp<RingBufferConsumer> mConsumer;
-        BufferItem             mBufferItem;
+        BufferQueue::BufferItem mBufferItem;
     };
 
     // Find a buffer using the filter, then pin it before returning it.
@@ -174,8 +174,8 @@ class RingBufferConsumer : public ConsumerBase,
     // Returns NOT_ENOUGH_DATA if list was empty.
     status_t releaseOldestBufferLocked(size_t* pinnedFrames);
 
-    struct RingBufferItem : public BufferItem {
-        RingBufferItem() : BufferItem(), mPinCount(0) {}
+    struct RingBufferItem : public BufferQueue::BufferItem {
+        RingBufferItem() : BufferQueue::BufferItem(), mPinCount(0) {}
         int mPinCount;
     };
 

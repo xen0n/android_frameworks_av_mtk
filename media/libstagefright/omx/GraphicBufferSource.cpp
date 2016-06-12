@@ -57,7 +57,7 @@ void GraphicBufferSource::PersistentProxyListener::onFrameAvailable(
         if (consumer == NULL) {
             return;
         }
-        BufferItem bi;
+        BufferQueue::BufferItem bi;
         status_t err = consumer->acquireBuffer(&bi, 0);
         if (err != OK) {
             ALOGE("PersistentProxyListener: acquireBuffer failed (%d)", err);
@@ -461,7 +461,7 @@ void GraphicBufferSource::suspend(bool suspend) {
         mSuspended = true;
 
         while (mNumFramesAvailable > 0) {
-            BufferItem item;
+            BufferQueue::BufferItem item;
             status_t err = mConsumer->acquireBuffer(&item, 0);
 
             if (err == BufferQueue::NO_BUFFER_AVAILABLE) {
@@ -512,7 +512,7 @@ bool GraphicBufferSource::fillCodecBuffer_l() {
 
     ALOGV("fillCodecBuffer_l: acquiring buffer, avail=%zu",
             mNumFramesAvailable);
-    BufferItem item;
+    BufferQueue::BufferItem item;
     status_t err = mConsumer->acquireBuffer(&item, 0);
     if (err == BufferQueue::NO_BUFFER_AVAILABLE) {
         // shouldn't happen
@@ -872,7 +872,7 @@ void GraphicBufferSource::onFrameAvailable(const BufferItem& /*item*/) {
             ALOGV("onFrameAvailable: suspended, ignoring frame");
         }
 
-        BufferItem item;
+        BufferQueue::BufferItem item;
         status_t err = mConsumer->acquireBuffer(&item, 0);
         if (err == OK) {
             mNumBufferAcquired++;
