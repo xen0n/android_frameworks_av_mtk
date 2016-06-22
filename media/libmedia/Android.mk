@@ -106,6 +106,10 @@ LOCAL_SRC_FILES += \
 
 # StrongPointer.h
 LOCAL_C_INCLUDES += $(TOP)/frameworks/rs/server
+
+ifeq ($(BOARD_USES_LEGACY_MTK_AV_BLOB),true)
+LOCAL_CFLAGS += -DUSE_LEGACY_MTK_AV_BLOB
+endif
 endif
 
 include $(BUILD_SHARED_LIBRARY)

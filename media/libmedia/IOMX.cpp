@@ -695,7 +695,11 @@ status_t BnOMX::onTransact(
             node_id node = (node_id)data.readInt32();
             OMX_INDEXTYPE index = static_cast<OMX_INDEXTYPE>(data.readInt32());
 
+#ifdef USE_LEGACY_MTK_AV_BLOB
+            size_t size = data.readInt32();
+#else
             size_t size = data.readInt64();
+#endif
 
             status_t err = NOT_ENOUGH_DATA;
             void *params = NULL;
