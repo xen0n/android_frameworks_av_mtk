@@ -961,8 +961,7 @@ status_t Camera3Device::createReprocessStreamFromStream(int outputId, int *id) {
 
 
 status_t Camera3Device::getStreamInfo(int id,
-        uint32_t *width, uint32_t *height,
-        uint32_t *format, android_dataspace *dataSpace) {
+        uint32_t *width, uint32_t *height, uint32_t *format) {
     ATRACE_CALL();
     Mutex::Autolock il(mInterfaceLock);
     Mutex::Autolock l(mLock);
@@ -993,7 +992,7 @@ status_t Camera3Device::getStreamInfo(int id,
     if (width) *width  = mOutputStreams[idx]->getWidth();
     if (height) *height = mOutputStreams[idx]->getHeight();
     if (format) *format = mOutputStreams[idx]->getFormat();
-    if (dataSpace) *dataSpace = mOutputStreams[idx]->getDataSpace();
+
     return OK;
 }
 

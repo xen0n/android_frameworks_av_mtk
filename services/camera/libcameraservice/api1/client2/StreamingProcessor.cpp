@@ -25,12 +25,11 @@
 #define ALOGVV(...) ((void)0)
 #endif
 
-#include <cutils/properties.h>
 #include <utils/Log.h>
 #include <utils/Trace.h>
 #include <gui/BufferItem.h>
 #include <gui/Surface.h>
-#include <media/hardware/HardwareAPI.h>
+#include <media/hardware/MetadataBufferType.h>
 
 #include "common/CameraDeviceBase.h"
 #include "api1/Camera2Client.h"
@@ -52,10 +51,7 @@ StreamingProcessor::StreamingProcessor(sp<Camera2Client> client):
         mRecordingStreamId(NO_STREAM),
         mRecordingFrameAvailable(false),
         mRecordingHeapCount(kDefaultRecordingHeapCount),
-        mRecordingHeapFree(kDefaultRecordingHeapCount),
-        mRecordingFormat(kDefaultRecordingFormat),
-        mRecordingDataSpace(kDefaultRecordingDataSpace),
-        mRecordingGrallocUsage(kDefaultRecordingGrallocUsage)
+        mRecordingHeapFree(kDefaultRecordingHeapCount)
 {
 }
 
@@ -155,7 +151,7 @@ status_t StreamingProcessor::updatePreviewStream(const Parameters &params) {
         // Check if stream parameters have to change
         uint32_t currentWidth, currentHeight;
         res = device->getStreamInfo(mPreviewStreamId,
-                &currentWidth, &currentHeight, 0, 0);
+                &currentWidth, &currentHeight, 0);
         if (res != OK) {
             ALOGE("%s: Camera %d: Error querying preview stream info: "
                     "%s (%d)", __FUNCTION__, mId, strerror(-res), res);
@@ -284,46 +280,6 @@ status_t StreamingProcessor::setRecordingBufferCount(size_t count) {
     return OK;
 }
 
-status_t StreamingProcessor::setRecordingFormat(int format,
-        android_dataspace dataSpace) {
-    ATRACE_CALL();
-
-    Mutex::Autolock m(mMutex);
-
-    ALOGV("%s: Camera %d: New recording format/dataspace from encoder: %X, %X",
-            __FUNCTION__, mId, format, dataSpace);
-
-    mRecordingFormat = format;
-    mRecordingDataSpace = dataSpace;
-    int prevGrallocUsage = mRecordingGrallocUsage;
-    if (mRecordingFormat == HAL_PIXEL_FORMAT_IMPLEMENTATION_DEFINED) {
-        mRecordingGrallocUsage = GRALLOC_USAGE_HW_VIDEO_ENCODER;
-    } else {
-        mRecordingGrallocUsage = GRALLOC_USAGE_SW_READ_OFTEN;
-    }
-
-    ALOGV("%s: Camera %d: New recording gralloc usage: %08X", __FUNCTION__, mId,
-            mRecordingGrallocUsage);
-
-    if (prevGrallocUsage != mRecordingGrallocUsage) {
-        ALOGV("%s: Camera %d: Resetting recording consumer for new usage",
-            __FUNCTION__, mId);
-
-        if (isStreamActive(mActiveStreamIds, mRecordingStreamId)) {
-            ALOGE("%s: Camera %d: Changing recording format when "
-                    "recording stream is already active!", __FUNCTION__,
-                    mId);
-            return INVALID_OPERATION;
-        }
-
-        releaseAllRecordingFramesLocked();
-
-        mRecordingConsumer.clear();
-    }
-
-    return OK;
-}
-
 status_t StreamingProcessor::updateRecordingRequest(const Parameters &params) {
     ATRACE_CALL();
     status_t res;
@@ -384,10 +340,9 @@ status_t StreamingProcessor::recordingStreamNeedsUpdate(
         return INVALID_OPERATION;
     }
 
-    uint32_t currentWidth, currentHeight, currentFormat;
-    android_dataspace currentDataSpace;
+    uint32_t currentWidth, currentHeight;
     res = device->getStreamInfo(mRecordingStreamId,
-            &currentWidth, &currentHeight, &currentFormat, &currentDataSpace);
+            &currentWidth, &currentHeight, 0);
     if (res != OK) {
         ALOGE("%s: Camera %d: Error querying recording output stream info: "
                 "%s (%d)", __FUNCTION__, mId,
@@ -395,11 +350,8 @@ status_t StreamingProcessor::recordingStreamNeedsUpdate(
         return res;
     }
 
-    if (mRecordingConsumer == 0 ||
-            currentWidth != (uint32_t)params.videoWidth ||
-            currentHeight != (uint32_t)params.videoHeight ||
-            currentFormat != (uint32_t)mRecordingFormat ||
-            currentDataSpace != mRecordingDataSpace) {
+    if (mRecordingConsumer == 0 || currentWidth != (uint32_t)params.videoWidth ||
+            currentHeight != (uint32_t)params.videoHeight) {
         *needsUpdate = true;
     }
     *needsUpdate = false;
@@ -428,7 +380,7 @@ status_t StreamingProcessor::updateRecordingStream(const Parameters &params) {
         sp<IGraphicBufferConsumer> consumer;
         BufferQueue::createBufferQueue(&producer, &consumer);
         mRecordingConsumer = new BufferItemConsumer(consumer,
-                mRecordingGrallocUsage,
+                GRALLOC_USAGE_HW_VIDEO_ENCODER,
                 mRecordingHeapCount + 1);
         mRecordingConsumer->setFrameAvailableListener(this);
         mRecordingConsumer->setName(String8("Camera2-RecordingConsumer"));
@@ -440,11 +392,8 @@ status_t StreamingProcessor::updateRecordingStream(const Parameters &params) {
     if (mRecordingStreamId != NO_STREAM) {
         // Check if stream parameters have to change
         uint32_t currentWidth, currentHeight;
-        uint32_t currentFormat;
-        android_dataspace currentDataSpace;
         res = device->getStreamInfo(mRecordingStreamId,
-                &currentWidth, &currentHeight,
-                &currentFormat, &currentDataSpace);
+                &currentWidth, &currentHeight, 0);
         if (res != OK) {
             ALOGE("%s: Camera %d: Error querying recording output stream info: "
                     "%s (%d)", __FUNCTION__, mId,
@@ -452,10 +401,7 @@ status_t StreamingProcessor::updateRecordingStream(const Parameters &params) {
             return res;
         }
         if (currentWidth != (uint32_t)params.videoWidth ||
-                currentHeight != (uint32_t)params.videoHeight ||
-                currentFormat != (uint32_t)mRecordingFormat ||
-                currentDataSpace != mRecordingDataSpace ||
-                newConsumer) {
+                currentHeight != (uint32_t)params.videoHeight || newConsumer) {
             // TODO: Should wait to be sure previous recording has finished
             res = device->deleteStream(mRecordingStreamId);
 
@@ -476,9 +422,11 @@ status_t StreamingProcessor::updateRecordingStream(const Parameters &params) {
 
     if (mRecordingStreamId == NO_STREAM) {
         mRecordingFrameCount = 0;
+        // Selecting BT.709 colorspace by default
+        // TODO: Wire this in from encoder side
         res = device->createStream(mRecordingWindow,
                 params.videoWidth, params.videoHeight,
-                mRecordingFormat, mRecordingDataSpace,
+                CAMERA2_HAL_PIXEL_FORMAT_OPAQUE, HAL_DATASPACE_BT709,
                 CAMERA3_STREAM_ROTATION_0, &mRecordingStreamId);
         if (res != OK) {
             ALOGE("%s: Camera %d: Can't create output stream for recording: "
@@ -774,12 +722,12 @@ status_t StreamingProcessor::processRecordingFrame() {
         }
 
         if (mRecordingHeap == 0) {
-            size_t payloadSize = sizeof(VideoNativeMetadata);
+            const size_t bufferSize = 4 + sizeof(buffer_handle_t);
             ALOGV("%s: Camera %d: Creating recording heap with %zu buffers of "
                     "size %zu bytes", __FUNCTION__, mId,
-                    mRecordingHeapCount, payloadSize);
+                    mRecordingHeapCount, bufferSize);
 
-            mRecordingHeap = new Camera2Heap(payloadSize, mRecordingHeapCount,
+            mRecordingHeap = new Camera2Heap(bufferSize, mRecordingHeapCount,
                     "Camera2Client::RecordingHeap");
             if (mRecordingHeap->mHeap->getSize() == 0) {
                 ALOGE("%s: Camera %d: Unable to allocate memory for recording",
@@ -802,7 +750,7 @@ status_t StreamingProcessor::processRecordingFrame() {
             mRecordingHeapFree = mRecordingHeapCount;
         }
 
-        if (mRecordingHeapFree == 0) {
+        if ( mRecordingHeapFree == 0) {
             ALOGE("%s: Camera %d: No free recording buffers, dropping frame",
                     __FUNCTION__, mId);
             mRecordingConsumer->releaseBuffer(imgBuffer);
@@ -822,15 +770,13 @@ status_t StreamingProcessor::processRecordingFrame() {
                 mRecordingHeap->mBuffers[heapIdx]->getMemory(&offset,
                         &size);
 
-        VideoNativeMetadata *payload = reinterpret_cast<VideoNativeMetadata*>(
-            (uint8_t*)heap->getBase() + offset);
-        payload->eType = kMetadataBufferTypeANWBuffer;
-        payload->pBuffer = imgBuffer.mGraphicBuffer->getNativeBuffer();
-        payload->nFenceFd = -1;
-
-        ALOGVV("%s: Camera %d: Sending out ANWBuffer %p",
-                __FUNCTION__, mId, payload->pBuffer);
-
+        uint8_t *data = (uint8_t*)heap->getBase() + offset;
+        uint32_t type = kMetadataBufferTypeGrallocSource;
+        *((uint32_t*)data) = type;
+        *((buffer_handle_t*)(data + 4)) = imgBuffer.mGraphicBuffer->handle;
+        ALOGVV("%s: Camera %d: Sending out buffer_handle_t %p",
+                __FUNCTION__, mId,
+                imgBuffer.mGraphicBuffer->handle);
         mRecordingBuffers.replaceAt(imgBuffer, heapIdx);
         recordingHeap = mRecordingHeap;
     }
@@ -863,42 +809,42 @@ void StreamingProcessor::releaseRecordingFrame(const sp<IMemory>& mem) {
                 heap->getHeapID(), mRecordingHeap->mHeap->getHeapID());
         return;
     }
-
-    VideoNativeMetadata *payload = reinterpret_cast<VideoNativeMetadata*>(
-        (uint8_t*)heap->getBase() + offset);
-
-    if (payload->eType != kMetadataBufferTypeANWBuffer) {
+    uint8_t *data = (uint8_t*)heap->getBase() + offset;
+    uint32_t type = *(uint32_t*)data;
+    if (type != kMetadataBufferTypeGrallocSource) {
         ALOGE("%s: Camera %d: Recording frame type invalid (got %x, expected %x)",
-                __FUNCTION__, mId, payload->eType,
-                kMetadataBufferTypeANWBuffer);
+                __FUNCTION__, mId, type,
+                kMetadataBufferTypeGrallocSource);
         return;
     }
 
     // Release the buffer back to the recording queue
+
+    buffer_handle_t imgHandle = *(buffer_handle_t*)(data + 4);
+
     size_t itemIndex;
     for (itemIndex = 0; itemIndex < mRecordingBuffers.size(); itemIndex++) {
         const BufferItem item = mRecordingBuffers[itemIndex];
         if (item.mBuf != BufferItemConsumer::INVALID_BUFFER_SLOT &&
-                item.mGraphicBuffer->getNativeBuffer() == payload->pBuffer) {
-                break;
+                item.mGraphicBuffer->handle == imgHandle) {
+            break;
         }
     }
-
     if (itemIndex == mRecordingBuffers.size()) {
-        ALOGE("%s: Camera %d: Can't find returned ANW Buffer %p in list of "
+        ALOGE("%s: Camera %d: Can't find buffer_handle_t %p in list of "
                 "outstanding buffers", __FUNCTION__, mId,
-                payload->pBuffer);
+                imgHandle);
         return;
     }
 
-    ALOGVV("%s: Camera %d: Freeing returned ANW buffer %p index %d", __FUNCTION__,
-            mId, payload->pBuffer, itemIndex);
+    ALOGVV("%s: Camera %d: Freeing buffer_handle_t %p", __FUNCTION__,
+            mId, imgHandle);
 
     res = mRecordingConsumer->releaseBuffer(mRecordingBuffers[itemIndex]);
     if (res != OK) {
         ALOGE("%s: Camera %d: Unable to free recording frame "
-                "(Returned ANW buffer: %p): %s (%d)", __FUNCTION__,
-                mId, payload->pBuffer, strerror(-res), res);
+                "(buffer_handle_t: %p): %s (%d)", __FUNCTION__,
+                mId, imgHandle, strerror(-res), res);
         return;
     }
     mRecordingBuffers.replaceAt(itemIndex);
