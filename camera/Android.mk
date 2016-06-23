@@ -58,6 +58,12 @@ else
 LOCAL_WHOLE_STATIC_LIBRARIES += libcamera_parameters
 endif
 
+ifeq ($(BOARD_HAS_MTK_HARDWARE),true)
+LOCAL_SRC_FILES += \
+    MtkCamera.cpp \
+
+endif
+
 LOCAL_MODULE:= libcamera_client
 
 include $(BUILD_SHARED_LIBRARY)
