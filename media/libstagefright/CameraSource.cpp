@@ -637,6 +637,16 @@ status_t CameraSource::startCameraRecording() {
         }
     }
 
+    err = mCamera->sendCommand(
+        CAMERA_CMD_SET_VIDEO_FORMAT, mEncoderFormat, mEncoderDataSpace);
+
+    // This could happen for CameraHAL1 clients; thus the failure is
+    // not a fatal error
+    if (err != OK) {
+        ALOGW("Failed to set video encoder format/dataspace to %d, %d due to %d",
+                mEncoderFormat, mEncoderDataSpace, err);
+    }
+
     err = OK;
     if (mCameraFlags & FLAGS_HOT_CAMERA) {
         mCamera->unlock();
@@ -686,6 +696,9 @@ status_t CameraSource::start(MetaData *meta) {
     mPauseStartTimeUs = 0;
     mPauseEndTimeUs = 0;
     mNumInputBuffers = 0;
+    mEncoderFormat = HAL_PIXEL_FORMAT_IMPLEMENTATION_DEFINED;
+    mEncoderDataSpace = HAL_DATASPACE_BT709;
+
     if (meta) {
         int64_t startTimeUs;
 
@@ -703,6 +716,14 @@ status_t CameraSource::start(MetaData *meta) {
         if (meta->findInt32(kKeyNumBuffers, &nBuffers)) {
             CHECK_GT(nBuffers, 0);
             mNumInputBuffers = nBuffers;
+        }
+
+        // apply encoder color format if specified
+        if (meta->findInt32(kKeyPixelFormat, &mEncoderFormat)) {
+            ALOGV("Using encoder format: %#x", mEncoderFormat);
+        }
+        if (meta->findInt32(kKeyColorSpace, &mEncoderDataSpace)) {
+            ALOGV("Using encoder data space: %#x", mEncoderDataSpace);
         }
     }
 

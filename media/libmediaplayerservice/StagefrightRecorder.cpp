@@ -1293,8 +1293,7 @@ void StagefrightRecorder::clipVideoFrameWidth() {
     }
 }
 
-status_t StagefrightRecorder::checkVideoEncoderCapabilities(
-        bool *supportsCameraSourceMetaDataMode) {
+status_t StagefrightRecorder::checkVideoEncoderCapabilities() {
     /* hardware codecs must support camera source meta data mode */
     Vector<CodecCapabilities> codecs;
     OMXClient client;
@@ -1307,9 +1306,6 @@ status_t StagefrightRecorder::checkVideoEncoderCapabilities(
              mVideoEncoder == VIDEO_ENCODER_H264 ? MEDIA_MIMETYPE_VIDEO_AVC :
              mVideoEncoder == VIDEO_ENCODER_H265 ? MEDIA_MIMETYPE_VIDEO_HEVC : ""),
             false /* decoder */, true /* hwCodec */, &codecs);
-    *supportsCameraSourceMetaDataMode = codecs.size() > 0;
-    ALOGV("encoder %s camera source meta-data mode",
-            *supportsCameraSourceMetaDataMode ? "supports" : "DOES NOT SUPPORT");
 
     if (!mCaptureFpsEnable) {
         // Dont clip for time lapse capture as encoder will have enough
@@ -1520,9 +1516,7 @@ status_t StagefrightRecorder::setupMediaSource(
 status_t StagefrightRecorder::setupCameraSource(
         sp<CameraSource> *cameraSource) {
     status_t err = OK;
-    bool encoderSupportsCameraSourceMetaDataMode;
-    if ((err = checkVideoEncoderCapabilities(
-                &encoderSupportsCameraSourceMetaDataMode)) != OK) {
+    if ((err = checkVideoEncoderCapabilities()) != OK) {
         return err;
     }
     Size videoSize;
@@ -1544,7 +1538,7 @@ status_t StagefrightRecorder::setupCameraSource(
         *cameraSource = AVFactory::get()->CreateCameraSourceFromCamera(
                 mCamera, mCameraProxy, mCameraId, mClientName, mClientUid,
                 videoSize, mFrameRate,
-                mPreviewSurface, encoderSupportsCameraSourceMetaDataMode);
+                mPreviewSurface);
     }
     AVUtils::get()->cacheCaptureBuffers(mCamera, mVideoEncoder);
     mCamera.clear();
