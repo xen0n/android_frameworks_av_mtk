@@ -637,6 +637,7 @@ status_t CameraSource::startCameraRecording() {
         }
     }
 
+#ifndef USE_LEGACY_MTK_AV_BLOB
     err = mCamera->sendCommand(
         CAMERA_CMD_SET_VIDEO_FORMAT, mEncoderFormat, mEncoderDataSpace);
 
@@ -646,6 +647,7 @@ status_t CameraSource::startCameraRecording() {
         ALOGW("Failed to set video encoder format/dataspace to %d, %d due to %d",
                 mEncoderFormat, mEncoderDataSpace, err);
     }
+#endif
 
     err = OK;
     if (mCameraFlags & FLAGS_HOT_CAMERA) {
