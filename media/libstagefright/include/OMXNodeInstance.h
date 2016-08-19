@@ -191,6 +191,9 @@ private:
     // For buffer id management
     OMX::buffer_id makeBufferID(OMX_BUFFERHEADERTYPE *bufferHeader);
     OMX_BUFFERHEADERTYPE *findBufferHeader(OMX::buffer_id buffer, OMX_U32 portIndex);
+#ifdef USE_LEGACY_MTK_AV_BLOB
+    OMX_BUFFERHEADERTYPE *findBufferHeader(OMX::buffer_id buffer);
+#endif
     OMX::buffer_id findBufferID(OMX_BUFFERHEADERTYPE *bufferHeader);
     void invalidateBufferID(OMX::buffer_id buffer);
 
